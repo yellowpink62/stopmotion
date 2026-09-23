@@ -67,7 +67,6 @@ app.innerHTML = `
         <h3 style="font-size:14px">Timeline — <span id="countText">0</span> frames</h3>
         <div style="display:flex; gap:6px">
           <button id="btnToggleTimeline" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg> Ocultar</button>
-          <button id="btnPreview" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Preview</button>
           <button id="btnClear" class="btn btn-danger" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpar</button>
         </div>
       </div>
@@ -87,18 +86,14 @@ app.innerHTML = `
     <div class="card" id="previewCard" style="display:none">
       <div style="display:flex; justify-content:space-between; align-items:center">
         <h3 style="font-size:14px">Preview</h3>
-        <button id="btnClosePreview" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Fechar</button>
+        <button id="btnPlayPause" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play</button>
       </div>
       <div class="preview-wrap" id="previewWrap" style="margin-top:10px">
         <video id="outputVideo" controls playsinline style="display:none"></video>
         <canvas id="previewCanvas" style="display:none"></canvas>
         <div id="previewPlaceholder" style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-size:13px; position:absolute; inset:0">Preview aqui</div>
       </div>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <h3 style="font-size:14px">Exportar vídeo</h3>
-      <div class="controls-grid" style="grid-template-columns: 1fr 1fr">
+      <div class="controls-grid" style="grid-template-columns: 1fr 1fr; margin-top:12px">
         <div class="field">
           <label>FPS</label>
           <select id="fps">
@@ -121,6 +116,10 @@ app.innerHTML = `
           </select>
         </div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3 style="font-size:14px">Exportar vídeo</h3>
       <div class="field" style="margin-top:8px">
         <label>Nome do arquivo</label>
         <input id="filename" value="stopmotion-3d.mp4" />
@@ -161,13 +160,12 @@ const statusEl = document.getElementById('status') as HTMLDivElement
 const logEl = document.getElementById('log') as HTMLDivElement
 const progressWrap = document.getElementById('progressWrap') as HTMLDivElement
 const progressBar = document.getElementById('progressBar') as HTMLElement
-const btnPreview = document.getElementById('btnPreview') as HTMLButtonElement
 const btnClear = document.getElementById('btnClear') as HTMLButtonElement
 const btnToggleTimeline = document.getElementById('btnToggleTimeline') as HTMLButtonElement
 const timelineCollapsible = document.getElementById('timelineCollapsible') as HTMLDivElement
 const previewCard = document.getElementById('previewCard') as HTMLDivElement
-const btnClosePreview = document.getElementById('btnClosePreview') as HTMLButtonElement
 const previewPlaceholder = document.getElementById('previewPlaceholder') as HTMLDivElement
+const btnPlayPause = document.getElementById('btnPlayPause') as HTMLButtonElement
 const tabs = document.querySelectorAll('.tab')
 
 tabs.forEach(t => t.addEventListener('click', () => {
@@ -187,14 +185,6 @@ btnToggleTimeline.addEventListener('click', () => {
     ? `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg> Mostrar`
     : `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg> Ocultar`
 })
-btnClosePreview.addEventListener('click', () => {
-  stopPreview()
-  previewCard.style.display = 'none'
-  outputVideo.pause()
-  outputVideo.src = ''
-  previewCanvas.style.display = 'none'
-  previewPlaceholder.style.display = 'flex'
-})
 
 function log(msg: string) {
   logEl.style.display = 'block'
@@ -209,6 +199,17 @@ function updateStats() {
   const res = resSel.value
   const pres = photoResSel.value
   document.getElementById('statRes')!.textContent = `Foto: ${pres} • Vídeo: ${res}`
+  // auto mostra preview quando tem 2+ fotos
+  if (n >= 2 && previewCard.style.display === 'none') {
+    previewCard.style.display = 'block'
+    previewWrap.style.display = 'block'
+    previewCanvas.style.display = 'none'
+    previewPlaceholder.style.display = 'flex'
+    outputVideo.style.display = 'none'
+  } else if (n < 2) {
+    stopPreview()
+    previewCard.style.display = 'none'
+  }
   const totalBytes = frames.reduce((a, f) => a + f.blob.size, 0)
   const mb = (totalBytes / 1024 / 1024).toFixed(1)
   document.getElementById('statSize')!.textContent = `~${mb} MB`
@@ -353,18 +354,7 @@ async function doCapture() {
 }
 btnCapture.addEventListener('click', doCapture)
 
-// debug de teclas do shutter (mostra o que o controle enviou)
-const keyDebug = document.createElement('div')
-keyDebug.id = 'keyDebug'
-keyDebug.style.cssText = 'font-size:12px; color:#fef08a; margin-top:8px; min-height:16px; word-break:break-all; background:#422006; padding:8px 10px; border-radius:8px; border:1px solid #854d0e; display:none'
-document.querySelector('#panel-camera')!.appendChild(keyDebug)
-function showKeyDebug(e: KeyboardEvent) {
-  const msg = `Tecla: key="${e.key}" code="${e.code}" keyCode=${e.keyCode}`
-  keyDebug.style.display = 'block'
-  keyDebug.textContent = msg + ' | (copie e me envie)'
-  // alert para ver no celular sem console
-  alert(msg)
-}
+// debug removido - não usa mais alert
 
 // remote shutter via botão de volume / bluetooth (envia VolumeUp/Enter)
 let lastVolumeCapture = 0
@@ -382,8 +372,6 @@ function isVolumeShutterEvent(e: KeyboardEvent) {
 }
 for (const ev of ['keydown', 'keyup'] as const) {
   window.addEventListener(ev, (e: KeyboardEvent) => {
-    // debug: mostra qualquer tecla para diagnosticar shutter
-    showKeyDebug(e)
     if (!isVolumeShutterEvent(e)) return
     const now = Date.now()
     if (now - lastVolumeCapture < 400) {
@@ -398,12 +386,6 @@ for (const ev of ['keydown', 'keyup'] as const) {
     btnCapture.focus()
   }, { passive: false } as any)
 }
-// também escuta qualquer tecla para debug quando câmera ligada
-window.addEventListener('keydown', (e) => {
-  if (isVolumeShutterEvent(e)) return
-  // se já mostramos acima, não duplica, mas mostra teclas desconhecidas
-  if (stream) showKeyDebug(e)
-})
 try {
   if ('mediaSession' in navigator) {
     // @ts-ignore
@@ -423,8 +405,6 @@ setInterval(() => {
     const pressed = pad.buttons.some(b => b.pressed)
     if (pressed && Date.now() - lastGamepadCapture > 500 && stream) {
       lastGamepadCapture = Date.now()
-      keyDebug.style.display = 'block'
-      keyDebug.textContent = `Gamepad: ${pad.id} botão pressionado -> capturando`
       doCapture()
     }
   }
@@ -467,15 +447,19 @@ dropzone.addEventListener('drop', e => {
 })
 
 // --- preview (canvas loop) ---
+function updatePlayButtons(isPlaying: boolean) {
+  const playIcon = `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play`
+  const pauseIcon = `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause`
+  btnPlayPause.innerHTML = isPlaying ? pauseIcon : playIcon
+}
 function stopPreview() {
   if (previewInterval) window.clearInterval(previewInterval)
   previewInterval = null
   isPreviewPlaying = false
-  btnPreview.innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Preview`
+  updatePlayButtons(false)
 }
-btnPreview.addEventListener('click', () => {
+function startPreview() {
   if (frames.length === 0) return
-  if (isPreviewPlaying) { stopPreview(); return }
   const fps = parseInt(fpsSel.value)
   const [tw, th] = resSel.value.split('x').map(Number)
   previewCard.style.display = 'block'
@@ -489,9 +473,8 @@ btnPreview.addEventListener('click', () => {
   const ctx = previewCanvas.getContext('2d')!
   let idx = 0
   isPreviewPlaying = true
-  btnPreview.innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pausar`
+  updatePlayButtons(true)
   previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  // preload images as Image elements
   const imgs: HTMLImageElement[] = frames.map(f => {
     const im = new Image()
     im.src = f.url
@@ -508,6 +491,20 @@ btnPreview.addEventListener('click', () => {
     }
     idx = (idx + 1) % frames.length
   }, 1000 / fps)
+}
+btnPlayPause.addEventListener('click', () => {
+  if (isPreviewPlaying) stopPreview()
+  else {
+    if (previewCard.style.display === 'none' || previewCanvas.style.display === 'none') startPreview()
+    else {
+      // se já está no preview de vídeo gerado, volta pro preview de frames
+      outputVideo.pause()
+      outputVideo.style.display = 'none'
+      previewCanvas.style.display = 'block'
+      previewPlaceholder.style.display = 'none'
+      startPreview()
+    }
+  }
 })
 
 btnClear.addEventListener('click', () => {
@@ -525,7 +522,13 @@ btnClear.addEventListener('click', () => {
   log('Timeline limpa.')
 })
 
-fpsSel.addEventListener('change', updateStats)
+fpsSel.addEventListener('change', () => {
+  updateStats()
+  if (isPreviewPlaying) {
+    stopPreview()
+    startPreview()
+  }
+})
 function applyOrientation() {
   const [pw, ph] = photoResSel.value.split('x').map(Number)
   const [vw, vh] = resSel.value.split('x').map(Number)
