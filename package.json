@@ -1,0 +1,25 @@
+{
+  "name": "stopmotion",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:http": "cross-env HTTPS=false vite --port 5173",
+    "dev:https": "vite --port 5173",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "preview:http": "cross-env HTTPS=false vite preview --port 4173"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "cross-env": "^10.1.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "^1.3.0"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2"
+  }
+}
