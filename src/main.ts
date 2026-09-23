@@ -741,27 +741,47 @@ setInterval(() => {
 }, 200)
 
 // --- import ---
+function naturalSort(a: string, b: string) {
+  // extrai números para ordenação natural robusta (IMG_2 < IMG_10)
+  const coll = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+  const r = coll.compare(a, b)
+  if (r !== 0) return r
+  // fallback por lastModified se nome igual
+  return 0
+}
 async function handleFiles(files: FileList | File[]) {
-  const arr = Array.from(files).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+  const arr = Array.from(files as File[]).sort((a, b) => {
+    const r = naturalSort(a.name, b.name)
+    if (r !== 0) return r
+    return (a.lastModified || 0) - (b.lastModified || 0)
+  })
   const target = photoResSel.value
+  // pushHistory para permitir undo do import em lote
+  if (arr.length) pushHistory()
   statusEl.textContent = `Processando ${arr.length} imagens...`
+  // processa sequencialmente para manter ordem, mas coleta resultados ordenados
+  const newFrames: Frame[] = []
   for (let i = 0; i < arr.length; i++) {
-    const f = arr[i]
+    const f = arr[i] as File
     try {
-      // skip non-image
       if (!f.type.startsWith('image/') && !f.name.match(/\.(heic|heif)$/i)) continue
       let blob: Blob = f
       blob = await convertHeicIfNeeded(blob, f.name)
       blob = await resizeBlobToFHD(blob, target)
       const url = URL.createObjectURL(blob)
-      frames.push({ id: Math.random().toString(36).slice(2), blob, url, name: f.name })
+      newFrames.push({ id: Math.random().toString(36).slice(2), blob, url, name: f.name })
     } catch (e: any) {
       log(`Falha em ${f.name}: ${e.message}`)
     }
-    if (i % 20 === 0) updateStats()
+    if (i % 20 === 0) {
+      statusEl.textContent = `Processando ${i + 1}/${arr.length}...`
+    }
   }
+  // append em ordem garantida
+  frames.push(...newFrames)
   updateStats()
-  log(`Importadas ${arr.length} arquivos. Total: ${frames.length}`)
+  log(`Importadas ${newFrames.length}/${arr.length} arquivos em ordem. Total: ${frames.length}`)
+  // se ainda fora de ordem, usuário pode arrastar na timeline ou usar botão ordenar
 }
 fileInput.addEventListener('change', () => {
   if (fileInput.files) handleFiles(fileInput.files)
