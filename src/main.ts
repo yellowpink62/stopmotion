@@ -561,10 +561,23 @@ function renderTimeline() {
   })
 }
 
+async function convertHeicIfNeeded(blob: Blob, name: string): Promise<Blob> {
+  const isHeic = blob.type === 'image/heic' || blob.type === 'image/heif' || /\.heic$/i.test(name) || /\.heif$/i.test(name)
+  if (!isHeic) return blob
+  try {
+    const { default: heic2any } = await import('heic2any')
+    const out = await heic2any({ blob, toType: 'image/jpeg', quality: 0.85 }) as Blob
+    const jpeg = Array.isArray(out) ? out[0] : out
+    log(`HEIC convertido: ${name}`)
+    return jpeg
+  } catch (e: any) {
+    log(`Falha HEIC ${name}: ${e.message} - tentando direto`)
+    return blob
+  }
+}
 async function resizeBlobToFHD(blob: Blob, target: string): Promise<Blob> {
   const [tw, th] = target.split('x').map(Number)
   const img = await createImageBitmap(blob).catch(async () => {
-    // fallback for HEIC or createImageBitmap fail: use <img>
     const url = URL.createObjectURL(blob)
     const el = new Image()
     el.src = url
@@ -738,8 +751,7 @@ async function handleFiles(files: FileList | File[]) {
       // skip non-image
       if (!f.type.startsWith('image/') && !f.name.match(/\.(heic|heif)$/i)) continue
       let blob: Blob = f
-      // resize if needed (also converts HEIC -> JPEG via canvas)
-      // Always resize to target to keep FHD and small size
+      blob = await convertHeicIfNeeded(blob, f.name)
       blob = await resizeBlobToFHD(blob, target)
       const url = URL.createObjectURL(blob)
       frames.push({ id: Math.random().toString(36).slice(2), blob, url, name: f.name })
