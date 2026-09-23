@@ -1,6 +1,7 @@
 import './style.css'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
+import JSZip from 'jszip'
 
 type Frame = { id: string; blob: Blob; url: string; name: string }
 
@@ -32,6 +33,14 @@ app.innerHTML = `
           <video id="video" autoplay playsinline muted style="display:none"></video>
           <div id="placeholder" class="camera-placeholder">Câmera desligada<br><small>Toque em "Ligar câmera" (precisa HTTPS ou localhost)</small></div>
           <canvas id="captureCanvas" style="display:none"></canvas>
+          <div id="gridOverlay" style="position:absolute; inset:0; pointer-events:none; display:none; border:1px solid rgba(255,255,255,.15)">
+            <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute; inset:0">
+              <line x1="33.3" y1="0" x2="33.3" y2="100" stroke="rgba(255,255,255,.4)" stroke-width="0.5"/>
+              <line x1="66.6" y1="0" x2="66.6" y2="100" stroke="rgba(255,255,255,.4)" stroke-width="0.5"/>
+              <line x1="0" y1="33.3" x2="100" y2="33.3" stroke="rgba(255,255,255,.4)" stroke-width="0.5"/>
+              <line x1="0" y1="66.6" x2="100" y2="66.6" stroke="rgba(255,255,255,.4)" stroke-width="0.5"/>
+            </svg>
+          </div>
         </div>
         <div class="field" style="margin-top:12px">
           <label>Foto (captura)</label>
@@ -46,6 +55,10 @@ app.innerHTML = `
           <button id="btnStartCam" class="btn btn-ghost"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> Ligar câmera</button>
           <button id="btnSwitch" class="btn btn-ghost" style="display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg> Trocar</button>
           <button id="btnCapture" class="btn btn-primary" disabled><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="8"/></svg> Capturar</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer"><input type="checkbox" id="chkGrid" /> Grade</label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer"><input type="checkbox" id="chkLockExp" /> Travar exposição</label>
         </div>
         <p style="font-size:11px; color:var(--muted); margin-top:6px">Toque no preview para capturar sem tremer.</p>
         <p id="cameraTip" style="font-size:12px; color:var(--muted); margin-top:8px">Dica: gire o celular na vertical. Fotos já saem em 1080×1920 (FHD vertical).</p>
@@ -86,7 +99,10 @@ app.innerHTML = `
     <div class="card" id="previewCard" style="display:none">
       <div style="display:flex; justify-content:space-between; align-items:center">
         <h3 style="font-size:14px">Preview</h3>
-        <button id="btnPlayPause" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play</button>
+        <div style="display:flex; gap:6px">
+          <button id="btnPlayPause" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play</button>
+          <button id="btnFullscreen" class="btn btn-ghost" style="padding:6px 10px; font-size:12px" title="Tela cheia"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+        </div>
       </div>
       <div class="preview-wrap" id="previewWrap" style="margin-top:10px">
         <video id="outputVideo" controls playsinline style="display:none"></video>
@@ -126,6 +142,7 @@ app.innerHTML = `
       </div>
 
       <button id="btnGenerate" class="btn btn-success" style="width:100%; margin-top:14px; padding:14px; font-size:16px" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg> Gerar vídeo local (.mp4)</button>
+      <button id="btnExportZip" class="btn btn-ghost" style="width:100%; margin-top:8px; display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><path d="M16 8l-8 0"/><path d="M16 12l-8 0"/></svg> Baixar ZIP dos frames</button>
       <div class="progress" id="progressWrap" style="display:none"><i id="progressBar"></i></div>
       <div id="status" style="font-size:12px; color:var(--muted); margin-top:8px; text-align:center">Adicione pelo menos 2 fotos</div>
       <button id="btnDownload" class="btn btn-primary" style="width:100%; margin-top:10px; display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Baixar vídeo</button>
@@ -151,6 +168,7 @@ const resSel = document.getElementById('resolution') as HTMLSelectElement
 const photoResSel = document.getElementById('photoRes') as HTMLSelectElement
 const btnGenerate = document.getElementById('btnGenerate') as HTMLButtonElement
 const btnDownload = document.getElementById('btnDownload') as HTMLButtonElement
+const btnExportZip = document.getElementById('btnExportZip') as HTMLButtonElement
 const outputVideo = document.getElementById('outputVideo') as HTMLVideoElement
 const previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement
 const previewWrap = document.getElementById('previewWrap') as HTMLDivElement
@@ -165,7 +183,11 @@ const btnToggleTimeline = document.getElementById('btnToggleTimeline') as HTMLBu
 const timelineCollapsible = document.getElementById('timelineCollapsible') as HTMLDivElement
 const previewCard = document.getElementById('previewCard') as HTMLDivElement
 const previewPlaceholder = document.getElementById('previewPlaceholder') as HTMLDivElement
+const chkGrid = document.getElementById('chkGrid') as HTMLInputElement
+const chkLockExp = document.getElementById('chkLockExp') as HTMLInputElement
+const gridOverlay = document.getElementById('gridOverlay') as HTMLDivElement
 const btnPlayPause = document.getElementById('btnPlayPause') as HTMLButtonElement
+const btnFullscreen = document.getElementById('btnFullscreen') as HTMLButtonElement
 const tabs = document.querySelectorAll('.tab')
 
 tabs.forEach(t => t.addEventListener('click', () => {
@@ -175,6 +197,37 @@ tabs.forEach(t => t.addEventListener('click', () => {
   document.getElementById('panel-camera')!.style.display = tab === 'camera' ? 'block' : 'none'
   document.getElementById('panel-import')!.style.display = tab === 'import' ? 'block' : 'none'
 }))
+chkGrid.addEventListener('change', () => { gridOverlay.style.display = chkGrid.checked ? 'block' : 'none' })
+chkLockExp.addEventListener('change', async () => {
+  if (!stream) return
+  const track = stream.getVideoTracks()[0] as any
+  try {
+    if (chkLockExp.checked) {
+      await track.applyConstraints({ advanced: [{ exposureMode: 'manual', focusMode: 'manual', whiteBalanceMode: 'manual' } as any] } as any)
+      log('Exposição travada (manual)')
+    } else {
+      await track.applyConstraints({ advanced: [{ exposureMode: 'continuous', focusMode: 'continuous', whiteBalanceMode: 'continuous' } as any] } as any)
+      log('Exposição auto')
+    }
+  } catch (e: any) {
+    log('Travar exposição não suportado neste device: ' + e.message)
+    try { if (chkLockExp.checked) await track.applyConstraints({ advanced: [{ exposureMode: 'manual' } as any] } as any) } catch {}
+  }
+})
+btnFullscreen.addEventListener('click', async () => {
+  const el = previewWrap as any
+  if (document.fullscreenElement) await document.exitFullscreen().catch(()=>{})
+  else await el.requestFullscreen().catch(()=> log('Fullscreen não suportado'))
+})
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) {
+    if (frames.length >= 2) {
+      e.preventDefault()
+      if (isPreviewPlaying) stopPreview()
+      else startPreview()
+    }
+  }
+})
 
 // collapse fotos
 let timelineCollapsed = false
@@ -192,6 +245,72 @@ function log(msg: string) {
   logEl.scrollTop = logEl.scrollHeight
 }
 
+let historyStack: { blob: Blob; name: string; id: string }[][] = []
+function pushHistory() {
+  if (frames.length === 0) return
+  historyStack.push(frames.map(f => ({ blob: f.blob, name: f.name, id: f.id })))
+  if (historyStack.length > 20) historyStack.shift()
+}
+function undo() {
+  const prev = historyStack.pop()
+  if (!prev) return
+  frames.forEach(f => URL.revokeObjectURL(f.url))
+  frames = prev.map(p => ({ ...p, url: URL.createObjectURL(p.blob) }))
+  updateStats()
+  log('Desfeito (Ctrl+Z)')
+}
+// --- IndexedDB persistência ---
+let db: IDBDatabase | null = null
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => {
+    if (db) return res(db)
+    const req = indexedDB.open('stopmotion', 1)
+    req.onupgradeneeded = () => { const d = req.result; if (!d.objectStoreNames.contains('frames')) d.createObjectStore('frames', { keyPath: 'id' }); if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'k' }) }
+    req.onsuccess = () => { db = req.result; res(db) }
+    req.onerror = () => rej(req.error)
+  })
+}
+async function saveDB() {
+  try {
+    const d = await openDB()
+    const tx = d.transaction(['frames','meta'], 'readwrite')
+    tx.objectStore('frames').clear()
+    tx.objectStore('meta').clear()
+    for (let i=0;i<frames.length;i++) tx.objectStore('frames').put({ id: frames[i].id, blob: frames[i].blob, name: frames[i].name, idx: i })
+    tx.objectStore('meta').put({ k: 'photoRes', v: photoResSel.value })
+    tx.objectStore('meta').put({ k: 'videoRes', v: resSel.value })
+    tx.objectStore('meta').put({ k: 'fps', v: fpsSel.value })
+  } catch {}
+}
+async function loadDB() {
+  try {
+    const d = await openDB()
+    const tx = d.transaction(['frames','meta'], 'readonly')
+    const reqFrames = tx.objectStore('frames').getAll()
+    const framesData: any[] = await new Promise((res,rej)=>{ reqFrames.onsuccess=()=>res(reqFrames.result); reqFrames.onerror=()=>rej(reqFrames.error)})
+    const metaReq = tx.objectStore('meta').getAll()
+    const meta: any[] = await new Promise((res)=>{ metaReq.onsuccess=()=>res(metaReq.result); metaReq.onerror=()=>res([])})
+    if (framesData.length) {
+      framesData.sort((a,b)=>a.idx-b.idx)
+      frames = framesData.map(f=>({ id: f.id, blob: f.blob, name: f.name, url: URL.createObjectURL(f.blob)}))
+      for (const m of meta) {
+        if (m.k==='photoRes' && m.v) photoResSel.value=m.v
+        if (m.k==='videoRes' && m.v) resSel.value=m.v
+        if (m.k==='fps' && m.v) fpsSel.value=m.v
+      }
+      applyOrientation()
+      updateStats()
+      log(`Projeto restaurado: ${frames.length} fotos`)
+    }
+  } catch{}
+}
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault()
+    undo()
+  }
+})
+
 function updateStats() {
   const n = frames.length
   counterBadge.textContent = `${n} foto${n !== 1 ? 's' : ''}`
@@ -199,7 +318,6 @@ function updateStats() {
   const res = resSel.value
   const pres = photoResSel.value
   document.getElementById('statRes')!.textContent = `Foto: ${pres} • Vídeo: ${res}`
-  // auto mostra preview quando tem 2+ fotos
   if (n >= 2 && previewCard.style.display === 'none') {
     previewCard.style.display = 'block'
     previewWrap.style.display = 'block'
@@ -211,10 +329,12 @@ function updateStats() {
     previewCard.style.display = 'none'
   }
   const totalBytes = frames.reduce((a, f) => a + f.blob.size, 0)
+  saveDB()
   const mb = (totalBytes / 1024 / 1024).toFixed(1)
   document.getElementById('statSize')!.textContent = `~${mb} MB`
   btnGenerate.disabled = n < 2
   btnCapture.disabled = !stream
+  ;(btnExportZip as any).style.display = n >= 1 ? 'flex' : 'none'
   statusEl.textContent = n < 2 ? 'Adicione pelo menos 2 fotos' : `${n} frames prontos • FPS ${fpsSel.value} = ~${(n / parseInt(fpsSel.value)).toFixed(1)}s de vídeo`
   renderTimeline()
 }
@@ -225,19 +345,49 @@ function renderTimeline() {
     return
   }
   timeline.innerHTML = frames.map((f, i) => `
-    <div class="thumb">
-      <img src="${f.url}" loading="lazy" />
+    <div class="thumb" draggable="true" data-idx="${i}" style="cursor:grab">
+      <img src="${f.url}" loading="lazy" draggable="false" />
       <span>${String(i + 1).padStart(3, '0')}</span>
+      <button data-dup="${f.id}" title="Duplicar" style="right:28px; background:rgba(59,130,246,.8)"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v3"/></svg></button>
       <button data-del="${f.id}" title="Remover"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
   `).join('')
+  let dragIdx: number | null = null
+  timeline.querySelectorAll('.thumb').forEach(el => {
+    el.addEventListener('dragstart', () => { dragIdx = parseInt((el as HTMLElement).dataset.idx!); (el as HTMLElement).style.opacity = '0.4' })
+    el.addEventListener('dragend', () => { (el as HTMLElement).style.opacity = '1'; dragIdx = null })
+    el.addEventListener('dragover', (e) => e.preventDefault())
+    el.addEventListener('drop', (e) => {
+      e.preventDefault()
+      const targetIdx = parseInt((el as HTMLElement).dataset.idx!)
+      if (dragIdx === null || dragIdx === targetIdx) return
+      pushHistory()
+      const [moved] = frames.splice(dragIdx, 1)
+      frames.splice(targetIdx, 0, moved)
+      updateStats()
+    })
+  })
   timeline.querySelectorAll('[data-del]').forEach(b => {
     b.addEventListener('click', () => {
       const id = (b as HTMLElement).dataset.del!
       const idx = frames.findIndex(f => f.id === id)
       if (idx >= 0) {
+        pushHistory()
         URL.revokeObjectURL(frames[idx].url)
         frames.splice(idx, 1)
+        updateStats()
+      }
+    })
+  })
+  timeline.querySelectorAll('[data-dup]').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = (b as HTMLElement).dataset.dup!
+      const idx = frames.findIndex(f => f.id === id)
+      if (idx >= 0) {
+        pushHistory()
+        const orig = frames[idx]
+        const dup: Frame = { id: Math.random().toString(36).slice(2), blob: orig.blob, url: URL.createObjectURL(orig.blob), name: orig.name }
+        frames.splice(idx + 1, 0, dup)
         updateStats()
       }
     })
@@ -444,6 +594,24 @@ dropzone.addEventListener('drop', e => {
   e.preventDefault()
   dropzone.classList.remove('drag')
   if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files)
+})
+btnExportZip.addEventListener('click', async () => {
+  if (frames.length === 0) return
+  btnExportZip.textContent = 'Gerando ZIP...'
+  const zip = new JSZip()
+  for (let i=0;i<frames.length;i++) {
+    const name = `frame_${String(i+1).padStart(4,'0')}.jpg`
+    zip.file(name, frames[i].blob)
+  }
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'stopmotion-frames.zip'
+  a.click()
+  setTimeout(()=>URL.revokeObjectURL(url), 5000)
+  btnExportZip.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><path d="M16 8l-8 0"/><path d="M16 12l-8 0"/></svg> Baixar ZIP dos frames`
+  log(`ZIP gerado: ${(blob.size/1024/1024).toFixed(1)} MB`)
 })
 
 // --- preview (canvas loop) ---
@@ -657,4 +825,5 @@ btnGenerate.addEventListener('click', async () => {
   }
 })
 
+loadDB().then(()=>updateStats())
 updateStats()
