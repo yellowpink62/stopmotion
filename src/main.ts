@@ -22,7 +22,16 @@ app.innerHTML = `
 </header>
 <div class="container">
   <div>
-    <div class="card">
+    <div class="card" id="projectsCard">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <h3 style="font-size:14px">Projetos — <span id="projCount">0/3</span></h3>
+        <button id="btnNewProject" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>
+      </div>
+      <div id="projectsList" style="margin-top:10px; display:flex; flex-direction:column; gap:6px; max-height:180px; overflow:auto"></div>
+      <p style="font-size:11px; color:var(--muted); margin-top:8px">Limite 3 projetos. Apague um para criar outro. Salvo local no navegador.</p>
+    </div>
+
+    <div class="card" style="margin-top:16px">
       <div class="tabs">
         <button class="tab active" data-tab="camera"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> Câmera</button>
         <button class="tab" data-tab="import"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-3.5-3.5a2 2 0 0 0-2.8 0L3 21"/></svg> Importar</button>
@@ -188,6 +197,7 @@ const chkLockExp = document.getElementById('chkLockExp') as HTMLInputElement
 const gridOverlay = document.getElementById('gridOverlay') as HTMLDivElement
 const btnPlayPause = document.getElementById('btnPlayPause') as HTMLButtonElement
 const btnFullscreen = document.getElementById('btnFullscreen') as HTMLButtonElement
+const btnNewProject = document.getElementById('btnNewProject') as HTMLButtonElement
 const tabs = document.querySelectorAll('.tab')
 
 tabs.forEach(t => t.addEventListener('click', () => {
@@ -259,51 +269,208 @@ function undo() {
   updateStats()
   log('Desfeito (Ctrl+Z)')
 }
-// --- IndexedDB persistência ---
+type Project = { id: string; name: string; createdAt: number; updatedAt: number; order?: number; frames: { id: string; blob: Blob; name: string }[]; photoRes: string; videoRes: string; fps: string }
+// --- IndexedDB persistência (múltiplos projetos, limite 3) ---
 let db: IDBDatabase | null = null
+let currentProjectId: string | null = localStorage.getItem('currentProjectId')
 function openDB(): Promise<IDBDatabase> {
   return new Promise((res, rej) => {
     if (db) return res(db)
-    const req = indexedDB.open('stopmotion', 1)
-    req.onupgradeneeded = () => { const d = req.result; if (!d.objectStoreNames.contains('frames')) d.createObjectStore('frames', { keyPath: 'id' }); if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'k' }) }
+    const req = indexedDB.open('stopmotion', 2)
+    req.onupgradeneeded = () => {
+      const d = req.result
+      if (!d.objectStoreNames.contains('projects')) d.createObjectStore('projects', { keyPath: 'id' })
+      if (!d.objectStoreNames.contains('frames')) d.createObjectStore('frames', { keyPath: 'id' })
+      if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'k' })
+    }
     req.onsuccess = () => { db = req.result; res(db) }
     req.onerror = () => rej(req.error)
   })
 }
-async function saveDB() {
+async function getAllProjects(): Promise<Project[]> {
+  const d = await openDB()
+  return new Promise((res)=>{ const tx=d.transaction('projects','readonly'); const req=tx.objectStore('projects').getAll(); req.onsuccess=()=>res(req.result as Project[]); req.onerror=()=>res([]) })
+}
+async function saveCurrentProject() {
+  if (!currentProjectId) return
   try {
     const d = await openDB()
-    const tx = d.transaction(['frames','meta'], 'readwrite')
-    tx.objectStore('frames').clear()
-    tx.objectStore('meta').clear()
-    for (let i=0;i<frames.length;i++) tx.objectStore('frames').put({ id: frames[i].id, blob: frames[i].blob, name: frames[i].name, idx: i })
-    tx.objectStore('meta').put({ k: 'photoRes', v: photoResSel.value })
-    tx.objectStore('meta').put({ k: 'videoRes', v: resSel.value })
-    tx.objectStore('meta').put({ k: 'fps', v: fpsSel.value })
+    const proj: Project = {
+      id: currentProjectId,
+      name: (document.getElementById('projName-' + currentProjectId) as any)?.textContent?.trim() || (await getProjectName(currentProjectId)) || 'Projeto',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      frames: frames.map(f=>({ id: f.id, blob: f.blob, name: f.name })),
+      photoRes: photoResSel.value,
+      videoRes: resSel.value,
+      fps: fpsSel.value
+    }
+    // preserva createdAt se já existir
+    const existing = await new Promise<Project|undefined>((res)=>{ const tx=d.transaction('projects','readonly'); const req=tx.objectStore('projects').get(currentProjectId!); req.onsuccess=()=>res(req.result); req.onerror=()=>res(undefined) })
+    if (existing) proj.createdAt = existing.createdAt
+    const tx2 = d.transaction('projects','readwrite')
+    tx2.objectStore('projects').put(proj)
+    // compat: também salva no stores antigos para fallback
+    try { const txOld = d.transaction(['frames','meta'],'readwrite'); txOld.objectStore('frames').clear(); txOld.objectStore('meta').clear(); for(let i=0;i<frames.length;i++) txOld.objectStore('frames').put({ id: frames[i].id, blob: frames[i].blob, name: frames[i].name, idx:i }); txOld.objectStore('meta').put({k:'photoRes',v:photoResSel.value}); txOld.objectStore('meta').put({k:'videoRes',v:resSel.value}); txOld.objectStore('meta').put({k:'fps',v:fpsSel.value}) } catch {}
+    renderProjectsList()
   } catch {}
 }
+async function getProjectName(id: string): Promise<string|undefined> {
+  try { const d=await openDB(); return await new Promise((res)=>{ const tx=d.transaction('projects','readonly'); const req=tx.objectStore('projects').get(id); req.onsuccess=()=>res(req.result?.name); req.onerror=()=>res(undefined) }) } catch { return undefined }
+}
+async function saveDB() { await saveCurrentProject() }
 async function loadDB() {
   try {
     const d = await openDB()
-    const tx = d.transaction(['frames','meta'], 'readonly')
-    const reqFrames = tx.objectStore('frames').getAll()
-    const framesData: any[] = await new Promise((res,rej)=>{ reqFrames.onsuccess=()=>res(reqFrames.result); reqFrames.onerror=()=>rej(reqFrames.error)})
-    const metaReq = tx.objectStore('meta').getAll()
-    const meta: any[] = await new Promise((res)=>{ metaReq.onsuccess=()=>res(metaReq.result); metaReq.onerror=()=>res([])})
-    if (framesData.length) {
-      framesData.sort((a,b)=>a.idx-b.idx)
-      frames = framesData.map(f=>({ id: f.id, blob: f.blob, name: f.name, url: URL.createObjectURL(f.blob)}))
-      for (const m of meta) {
-        if (m.k==='photoRes' && m.v) photoResSel.value=m.v
-        if (m.k==='videoRes' && m.v) resSel.value=m.v
-        if (m.k==='fps' && m.v) fpsSel.value=m.v
-      }
-      applyOrientation()
-      updateStats()
-      log(`Projeto restaurado: ${frames.length} fotos`)
+    let projects = await getAllProjects()
+    // migração: se vazio mas tem frames antigos, cria projeto 1 a partir deles
+    if (projects.length===0) {
+      try {
+        const txOld=d.transaction(['frames','meta'],'readonly')
+        const reqFrames=txOld.objectStore('frames').getAll()
+        const oldFrames:any[] = await new Promise((res)=>{ reqFrames.onsuccess=()=>res(reqFrames.result as any[]); reqFrames.onerror=()=>res([]) })
+        if (oldFrames.length) {
+          oldFrames.sort((a,b)=>a.idx-b.idx)
+          const proj: Project = { id: 'p-'+Date.now().toString(36), name: 'Projeto 1', createdAt: Date.now(), updatedAt: Date.now(), frames: oldFrames.map(f=>({id:f.id, blob:f.blob, name:f.name})), photoRes: photoResSel.value, videoRes: resSel.value, fps: fpsSel.value }
+          const metaReq=txOld.objectStore('meta').getAll()
+          const meta:any[] = await new Promise((res)=>{ metaReq.onsuccess=()=>res(metaReq.result); metaReq.onerror=()=>res([]) })
+          for(const m of meta){ if(m.k==='photoRes') proj.photoRes=m.v; if(m.k==='videoRes') proj.videoRes=m.v; if(m.k==='fps') proj.fps=m.v }
+          const tx2=d.transaction('projects','readwrite'); tx2.objectStore('projects').put(proj)
+          currentProjectId=proj.id; localStorage.setItem('currentProjectId', currentProjectId)
+          projects=[proj]
+        }
+      } catch {}
     }
-  } catch{}
+    if (projects.length===0) {
+      // cria primeiro projeto vazio
+      const id='p-'+Date.now().toString(36)
+      const proj: Project={ id, name:'Projeto 1', createdAt: Date.now(), updatedAt: Date.now(), frames:[], photoRes: photoResSel.value, videoRes: resSel.value, fps: fpsSel.value }
+      const tx=d.transaction('projects','readwrite'); tx.objectStore('projects').put(proj)
+      currentProjectId=id; localStorage.setItem('currentProjectId', id)
+      projects=[proj]
+    }
+    // escolhe projeto atual (salvo) ou o mais recente
+    if (!currentProjectId || !projects.find(p=>p.id===currentProjectId)) {
+      projects.sort((a,b)=>b.updatedAt-a.updatedAt)
+      currentProjectId=projects[0].id; localStorage.setItem('currentProjectId', currentProjectId)
+    }
+    const current = projects.find(p=>p.id===currentProjectId)!
+    frames = current.frames.map(f=>({ ...f, url: URL.createObjectURL(f.blob) }))
+    photoResSel.value=current.photoRes || photoResSel.value
+    resSel.value=current.videoRes || resSel.value
+    fpsSel.value=current.fps || fpsSel.value
+    applyOrientation()
+    renderProjectsList()
+    if (frames.length) log(`Projeto "${current.name}" restaurado: ${frames.length} fotos`)
+  } catch(e:any){ log('Erro loadDB: '+e.message) }
 }
+async function renderProjectsList() {
+  const list = document.getElementById('projectsList') as HTMLDivElement
+  const countEl = document.getElementById('projCount') as HTMLSpanElement
+  let projects = await getAllProjects()
+  // atribui order se faltar
+  let needOrderSave=false
+  projects.forEach((p,i)=>{ if(p.order===undefined){ p.order=i; needOrderSave=true } })
+  if(needOrderSave){ const d=await openDB(); const tx=d.transaction('projects','readwrite'); projects.forEach(p=>tx.objectStore('projects').put(p)) }
+  projects.sort((a,b)=>(a.order??0)-(b.order??0))
+  if (countEl) countEl.textContent = `${projects.length}/3`
+  if (!list) return
+  list.innerHTML = projects.map(p=>`
+    <div draggable="true" data-proj="${p.id}" style="display:flex; align-items:center; gap:8px; padding:8px; border-radius:8px; border:1px solid ${p.id===currentProjectId?'var(--accent)':'var(--border)'}; background:${p.id===currentProjectId?'#1e293b':'var(--card2)'}; cursor:grab">
+      <span style="color:var(--muted); cursor:grab; user-select:none" title="Arrastar para reordenar">⋮⋮</span>
+      <div style="flex:1; min-width:0">
+        <div style="font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" id="projName-${p.id}">${p.name}</div>
+        <div style="font-size:11px; color:var(--muted)">${p.frames.length} fotos • ${p.videoRes} • ${p.fps}fps</div>
+      </div>
+      <button data-load="${p.id}" class="btn btn-ghost" style="padding:6px 8px; font-size:11px" title="Carregar">${p.id===currentProjectId?'Ativo':'Abrir'}</button>
+      <button data-rename="${p.id}" class="btn btn-ghost" style="padding:6px 6px; font-size:11px" title="Renomear"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button data-delproj="${p.id}" class="btn btn-danger" style="padding:6px 6px; font-size:11px" title="Apagar"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+  `).join('') || `<div style="text-align:center; color:var(--muted); font-size:12px; padding:10px">Nenhum projeto</div>`
+  list.querySelectorAll('[data-load]').forEach(b=>b.addEventListener('click', async ()=>{
+    const id=(b as HTMLElement).dataset.load!
+    if(id===currentProjectId) return
+    // salva atual antes de trocar
+    await saveCurrentProject()
+    currentProjectId=id; localStorage.setItem('currentProjectId', id)
+    const d=await openDB(); const proj:Project = await new Promise((res)=>{ const tx=d.transaction('projects','readonly'); const req=tx.objectStore('projects').get(id); req.onsuccess=()=>res(req.result); req.onerror=()=>res(undefined as any) }) as any
+    if(proj){
+      frames.forEach(f=>URL.revokeObjectURL(f.url))
+      frames=proj.frames.map(f=>({ ...f, url: URL.createObjectURL(f.blob) }))
+      photoResSel.value=proj.photoRes; resSel.value=proj.videoRes; fpsSel.value=proj.fps
+      applyOrientation(); updateStats()
+    }
+  }))
+  // drag para reordenar projetos
+  let dragProjId: string | null = null
+  list.querySelectorAll('[data-proj]').forEach(el=>{
+    el.addEventListener('dragstart', ()=>{ dragProjId=(el as HTMLElement).dataset.proj!; (el as HTMLElement).style.opacity='0.5' })
+    el.addEventListener('dragend', ()=>{ (el as HTMLElement).style.opacity='1'; dragProjId=null })
+    el.addEventListener('dragover', (e)=>e.preventDefault())
+    el.addEventListener('drop', async (e)=>{
+      e.preventDefault()
+      const targetId=(el as HTMLElement).dataset.proj!
+      if(!dragProjId || dragProjId===targetId) return
+      const ids=projects.map(p=>p.id)
+      const from=ids.indexOf(dragProjId), to=ids.indexOf(targetId)
+      const [moved]=projects.splice(from,1)
+      projects.splice(to,0,moved)
+      projects.forEach((p,i)=>p.order=i)
+      const d=await openDB(); const tx=d.transaction('projects','readwrite'); projects.forEach(p=>tx.objectStore('projects').put(p))
+      renderProjectsList()
+    })
+  })
+  list.querySelectorAll('[data-rename]').forEach(b=>b.addEventListener('click', async ()=>{
+    const id=(b as HTMLElement).dataset.rename!
+    const d=await openDB(); const proj:Project = await new Promise((res)=>{ const tx=d.transaction('projects','readonly'); const req=tx.objectStore('projects').get(id); req.onsuccess=()=>res(req.result); req.onerror=()=>res(undefined as any) }) as any
+    if(!proj) return
+    const name=prompt('Novo nome:', proj.name)
+    if(!name || !name.trim()) return
+    proj.name=name.trim(); proj.updatedAt=Date.now()
+    const tx=d.transaction('projects','readwrite'); tx.objectStore('projects').put(proj)
+    renderProjectsList()
+  }))
+  list.querySelectorAll('[data-delproj]').forEach(b=>b.addEventListener('click', async ()=>{
+    const id=(b as HTMLElement).dataset.delproj!
+    if(!confirm('Apagar projeto? Fotos serão perdidas.')) return
+    const d=await openDB(); const tx=d.transaction('projects','readwrite'); tx.objectStore('projects').delete(id)
+    await new Promise<void>((res)=>{ tx.oncomplete=()=>res(); tx.onerror=()=>res() })
+    if(id===currentProjectId){
+      const remaining=await getAllProjects()
+      if(remaining.length===0){
+        const newId='p-'+Date.now().toString(36)
+        const proj:Project={ id:newId, name:'Projeto 1', createdAt: Date.now(), updatedAt: Date.now(), frames:[], photoRes: photoResSel.value, videoRes: resSel.value, fps: fpsSel.value }
+        const tx2=d.transaction('projects','readwrite'); tx2.objectStore('projects').put(proj)
+        currentProjectId=newId; localStorage.setItem('currentProjectId', newId)
+        frames=[]; frames.forEach(f=>URL.revokeObjectURL(f.url)); updateStats()
+      } else {
+        remaining.sort((a,b)=>b.updatedAt-a.updatedAt)
+        currentProjectId=remaining[0].id; localStorage.setItem('currentProjectId', currentProjectId)
+        const proj=remaining[0]
+        frames.forEach(f=>URL.revokeObjectURL(f.url))
+        frames=proj.frames.map(f=>({ ...f, url: URL.createObjectURL(f.blob) }))
+        photoResSel.value=proj.photoRes; resSel.value=proj.videoRes; fpsSel.value=proj.fps
+        applyOrientation(); updateStats()
+      }
+    }
+    renderProjectsList()
+  }))
+}
+btnNewProject.addEventListener('click', async () => {
+  const projects = await getAllProjects()
+  if (projects.length >= 3) { alert('Limite de 3 projetos. Apague um para criar outro.'); return }
+  const name = prompt('Nome do novo projeto:', `Projeto ${projects.length + 1}`)
+  if (!name || !name.trim()) return
+  await saveCurrentProject()
+  const id = 'p-' + Date.now().toString(36)
+  const proj: Project = { id, name: name.trim(), createdAt: Date.now(), updatedAt: Date.now(), frames: [], photoRes: photoResSel.value, videoRes: resSel.value, fps: fpsSel.value }
+  const d = await openDB(); const tx=d.transaction('projects','readwrite'); tx.objectStore('projects').put(proj)
+  await new Promise<void>((res)=>{ tx.oncomplete=()=>res(); tx.onerror=()=>res() })
+  currentProjectId=id; localStorage.setItem('currentProjectId', id)
+  frames.forEach(f=>URL.revokeObjectURL(f.url)); frames=[]
+  applyOrientation(); updateStats()
+  renderProjectsList()
+})
 window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault()
@@ -826,4 +993,4 @@ btnGenerate.addEventListener('click', async () => {
 })
 
 loadDB().then(()=>updateStats())
-updateStats()
+// updateStats() inicial já é chamado pelo loadDB, evita limpar DB antes do load
