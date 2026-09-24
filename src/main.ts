@@ -37,6 +37,16 @@ app.innerHTML = `
         <button class="tab" data-tab="import"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-3.5-3.5a2 2 0 0 0-2.8 0L3 21"/></svg> Importar</button>
       </div>
 
+      <div class="field" style="margin:12px 0 16px 0">
+        <label>Qualidade (captura e import)</label>
+        <select id="quality">
+          <option value="original">Original (sem recompressão)</option>
+          <option value="0.95">0.95 (máxima)</option>
+          <option value="0.90">0.90 (alta)</option>
+          <option value="0.85" selected>0.85 (padrão)</option>
+        </select>
+      </div>
+
       <div id="panel-camera">
         <div class="camera-wrap" id="cameraWrap">
           <video id="video" autoplay playsinline muted style="display:none"></video>
@@ -52,12 +62,14 @@ app.innerHTML = `
           </div>
         </div>
         <div class="field" style="margin-top:12px">
-          <label>Foto (captura)</label>
+          <label>Foto</label>
           <select id="photoRes">
             <option value="720x1280">720×1280 (HD Vertical)</option>
             <option value="1080x1920" selected>1080×1920 (FHD Vertical)</option>
+            <option value="2160x3840">2160×3840 (4K Vertical)</option>
             <option value="1280x720">1280×720 (HD Horizontal)</option>
             <option value="1920x1080">1920×1080 (FHD Horizontal)</option>
+            <option value="3840x2160">3840×2160 (4K Horizontal)</option>
           </select>
         </div>
         <div class="camera-controls">
@@ -67,7 +79,6 @@ app.innerHTML = `
         </div>
         <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer"><input type="checkbox" id="chkGrid" /> Grade</label>
-          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer"><input type="checkbox" id="chkLockExp" /> Travar exposição</label>
         </div>
         <p style="font-size:11px; color:var(--muted); margin-top:6px">Toque no preview para capturar sem tremer.</p>
         <p id="cameraTip" style="font-size:12px; color:var(--muted); margin-top:8px">Dica: gire o celular na vertical. Fotos já saem em 1080×1920 (FHD vertical).</p>
@@ -77,9 +88,20 @@ app.innerHTML = `
         <label class="dropzone" id="dropzone" for="fileInput">
           <div style="line-height:1.4"><strong>Clique ou arraste 500 fotos aqui</strong></div>
           <div style="line-height:1.4; margin-top:6px; font-size:13px">JPG / PNG / HEIC (HEIC será convertido).</div>
-          <div style="line-height:1.4; font-size:12px; opacity:.8">Ordenado por nome automaticamente.</div>
+          <div style="line-height:1.4; font-size:12px; opacity:.8">Ordenado automaticamente.</div>
         </label>
         <input id="fileInput" type="file" accept="image/*,.heic,.heif" multiple style="display:none" />
+        <div style="display:flex; gap:8px; margin-top:10px; align-items:end">
+          <div class="field" style="flex:1; margin:0">
+            <label>Ordenar por</label>
+            <select id="sortMode">
+              <option value="name" selected>Nome (natural)</option>
+              <option value="dateFile">Data do arquivo</option>
+              <option value="exif">Data EXIF (criação original)</option>
+            </select>
+          </div>
+          <button id="btnSortTimeline" class="btn btn-ghost" style="padding:8px 10px; font-size:12px" title="Reordenar timeline já importada"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><polyline points="3 12 5 12 21 12"/><polyline points="3 18 5 18 21 18"/></svg> Ordenar</button>
+        </div>
         <p id="importTip" style="font-size:11px; color:var(--muted); margin-top:8px; line-height:1.4">Imagens serão redimensionadas para 1080×1920 (vertical) localmente antes de gerar o vídeo.</p>
       </div>
     </div>
@@ -129,15 +151,21 @@ app.innerHTML = `
             <option value="15">15 fps</option>
             <option value="24" selected>24 fps</option>
             <option value="30">30 fps</option>
+            <option value="40">40 fps</option>
+            <option value="50">50 fps</option>
+            <option value="60">60 fps</option>
           </select>
         </div>
         <div class="field">
           <label>Vídeo (saída)</label>
           <select id="resolution">
-            <option value="720x1280">720×1280 (Vertical)</option>
-            <option value="1080x1920" selected>1080×1920 (Vertical)</option>
-            <option value="1280x720">1280×720 (Horizontal)</option>
-            <option value="1920x1080">1920×1080 (Horizontal)</option>
+            <option value="original">Original (mantém foto)</option>
+            <option value="720x1280">720×1280 (HD Vertical)</option>
+            <option value="1080x1920" selected>1080×1920 (FHD Vertical)</option>
+            <option value="2160x3840">2160×3840 (4K Vertical)</option>
+            <option value="1280x720">1280×720 (HD Horizontal)</option>
+            <option value="1920x1080">1920×1080 (FHD Horizontal)</option>
+            <option value="3840x2160">3840×2160 (4K Horizontal)</option>
           </select>
         </div>
       </div>
@@ -147,7 +175,7 @@ app.innerHTML = `
       <h3 style="font-size:14px">Exportar vídeo</h3>
       <div class="field" style="margin-top:8px">
         <label>Nome do arquivo</label>
-        <input id="filename" value="stopmotion-3d.mp4" />
+        <input id="filename" value="stopmotion.mp4" />
       </div>
 
       <button id="btnGenerate" class="btn btn-success" style="width:100%; margin-top:14px; padding:14px; font-size:16px" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg> Gerar vídeo local (.mp4)</button>
@@ -169,6 +197,7 @@ const captureCanvas = document.getElementById('captureCanvas') as HTMLCanvasElem
 const btnStartCam = document.getElementById('btnStartCam') as HTMLButtonElement
 const btnSwitch = document.getElementById('btnSwitch') as HTMLButtonElement
 const btnCapture = document.getElementById('btnCapture') as HTMLButtonElement
+const qualitySel = document.getElementById('quality') as HTMLSelectElement
 const fileInput = document.getElementById('fileInput') as HTMLInputElement
 const dropzone = document.getElementById('dropzone') as HTMLLabelElement
 const timeline = document.getElementById('timeline') as HTMLDivElement
@@ -189,11 +218,12 @@ const progressWrap = document.getElementById('progressWrap') as HTMLDivElement
 const progressBar = document.getElementById('progressBar') as HTMLElement
 const btnClear = document.getElementById('btnClear') as HTMLButtonElement
 const btnToggleTimeline = document.getElementById('btnToggleTimeline') as HTMLButtonElement
+const sortModeSel = document.getElementById('sortMode') as HTMLSelectElement
+const btnSortTimeline = document.getElementById('btnSortTimeline') as HTMLButtonElement
 const timelineCollapsible = document.getElementById('timelineCollapsible') as HTMLDivElement
 const previewCard = document.getElementById('previewCard') as HTMLDivElement
 const previewPlaceholder = document.getElementById('previewPlaceholder') as HTMLDivElement
 const chkGrid = document.getElementById('chkGrid') as HTMLInputElement
-const chkLockExp = document.getElementById('chkLockExp') as HTMLInputElement
 const gridOverlay = document.getElementById('gridOverlay') as HTMLDivElement
 const btnPlayPause = document.getElementById('btnPlayPause') as HTMLButtonElement
 const btnFullscreen = document.getElementById('btnFullscreen') as HTMLButtonElement
@@ -208,22 +238,6 @@ tabs.forEach(t => t.addEventListener('click', () => {
   document.getElementById('panel-import')!.style.display = tab === 'import' ? 'block' : 'none'
 }))
 chkGrid.addEventListener('change', () => { gridOverlay.style.display = chkGrid.checked ? 'block' : 'none' })
-chkLockExp.addEventListener('change', async () => {
-  if (!stream) return
-  const track = stream.getVideoTracks()[0] as any
-  try {
-    if (chkLockExp.checked) {
-      await track.applyConstraints({ advanced: [{ exposureMode: 'manual', focusMode: 'manual', whiteBalanceMode: 'manual' } as any] } as any)
-      log('Exposição travada (manual)')
-    } else {
-      await track.applyConstraints({ advanced: [{ exposureMode: 'continuous', focusMode: 'continuous', whiteBalanceMode: 'continuous' } as any] } as any)
-      log('Exposição auto')
-    }
-  } catch (e: any) {
-    log('Travar exposição não suportado neste device: ' + e.message)
-    try { if (chkLockExp.checked) await track.applyConstraints({ advanced: [{ exposureMode: 'manual' } as any] } as any) } catch {}
-  }
-})
 btnFullscreen.addEventListener('click', async () => {
   const el = previewWrap as any
   if (document.fullscreenElement) await document.exitFullscreen().catch(()=>{})
@@ -576,7 +590,10 @@ async function convertHeicIfNeeded(blob: Blob, name: string): Promise<Blob> {
   }
 }
 async function resizeBlobToFHD(blob: Blob, target: string): Promise<Blob> {
+  if (qualitySel?.value === 'original') return blob
   const [tw, th] = target.split('x').map(Number)
+  // não faz upscale de imagens pequenas para não borrar (ex: 500x500 -> 4K)
+  // se já for menor que target, mantém tamanho original com letterbox
   const img = await createImageBitmap(blob).catch(async () => {
     const url = URL.createObjectURL(blob)
     const el = new Image()
@@ -591,14 +608,20 @@ async function resizeBlobToFHD(blob: Blob, target: string): Promise<Blob> {
   canvas.width = tw
   canvas.height = th
   const ctx = canvas.getContext('2d')!
-  const scale = Math.max(tw / img.width, th / img.height)
+  // evita upscale borrado: se imagem menor que target, não amplia além de 1x
+  const scale = Math.min(1, Math.max(tw / img.width, th / img.height))
   const w = img.width * scale
   const h = img.height * scale
   const x = (tw - w) / 2
   const y = (th - h) / 2
+  // fundo preto para letterbox quando não preenche
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, tw, th)
   ctx.drawImage(img, x, y, w, h)
   img.close?.()
-  const out: Blob = await new Promise(res => canvas.toBlob(b => res(b!), 'image/jpeg', 0.85)!)
+  const qRaw = qualitySel?.value || '0.85'
+  const q = qRaw === 'original' ? 0.92 : parseFloat(qRaw)
+  const out: Blob = await new Promise(res => canvas.toBlob(b => res(b!), 'image/jpeg', q)!)
   return out
 }
 
@@ -674,7 +697,9 @@ async function doCapture() {
   const w = vw * scale
   const h = vh * scale
   ctx.drawImage(video, (tw - w) / 2, (th - h) / 2, w, h)
-  const blob: Blob = await new Promise(res => captureCanvas.toBlob(b => res(b!), 'image/jpeg', 0.85)!)
+  const qRaw2 = qualitySel?.value || '0.85'
+  const q2 = qRaw2 === 'original' ? 0.92 : parseFloat(qRaw2)
+  const blob: Blob = await new Promise(res => captureCanvas.toBlob(b => res(b!), 'image/jpeg', q2)!)
   const url = URL.createObjectURL(blob)
   frames.push({ id: Math.random().toString(36).slice(2), blob, url, name: `cap_${String(frames.length + 1).padStart(4, '0')}.jpg` })
   video.style.filter = 'brightness(1.8)'
@@ -742,19 +767,35 @@ setInterval(() => {
 
 // --- import ---
 function naturalSort(a: string, b: string) {
-  // extrai números para ordenação natural robusta (IMG_2 < IMG_10)
   const coll = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
-  const r = coll.compare(a, b)
-  if (r !== 0) return r
-  // fallback por lastModified se nome igual
-  return 0
+  return coll.compare(a, b)
+}
+async function getExifDate(file: File): Promise<number | null> {
+  try {
+    const { default: exifr } = await import('exifr')
+    const data: any = await exifr.parse(file, ['DateTimeOriginal','CreateDate','ModifyDate','CreationDate'])
+    const d = data?.DateTimeOriginal || data?.CreateDate || data?.ModifyDate || data?.CreationDate
+    if (d instanceof Date && !isNaN(d.getTime())) return d.getTime()
+    if (typeof d === 'string') { const t=Date.parse(d); if(!isNaN(t)) return t }
+  } catch {}
+  return null
 }
 async function handleFiles(files: FileList | File[]) {
-  const arr = Array.from(files as File[]).sort((a, b) => {
-    const r = naturalSort(a.name, b.name)
-    if (r !== 0) return r
-    return (a.lastModified || 0) - (b.lastModified || 0)
-  })
+  const sortMode = (document.getElementById('sortMode') as HTMLSelectElement)?.value || 'name'
+  let arr = Array.from(files as File[])
+  if (sortMode === 'exif') {
+    statusEl.textContent = `Lendo EXIF de ${arr.length} imagens...`
+    const withDate = await Promise.all(arr.map(async f=>{
+      const d = await getExifDate(f)
+      return { f, d: d ?? f.lastModified ?? 0 }
+    }))
+    withDate.sort((a,b)=>a.d - b.d)
+    arr = withDate.map(x=>x.f)
+  } else if (sortMode === 'dateFile') {
+    arr.sort((a,b)=>(a.lastModified||0)-(b.lastModified||0))
+  } else {
+    arr.sort((a,b)=>{ const r=naturalSort(a.name,b.name); if(r!==0) return r; return (a.lastModified||0)-(b.lastModified||0) })
+  }
   const target = photoResSel.value
   // pushHistory para permitir undo do import em lote
   if (arr.length) pushHistory()
@@ -794,6 +835,39 @@ dropzone.addEventListener('drop', e => {
   dropzone.classList.remove('drag')
   if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files)
 })
+btnSortTimeline.addEventListener('click', async () => {
+  if (frames.length < 2) return
+  const mode = sortModeSel.value
+  pushHistory()
+  if (mode === 'name') {
+    frames.sort((a,b)=> naturalSort(a.name,b.name))
+  } else if (mode === 'dateFile') {
+    // para frames já importados não temos lastModified, usa nome como fallback
+    frames.sort((a,b)=> naturalSort(a.name,b.name))
+    log('Ordenar por data do arquivo só vale no import; reordenando por nome.')
+  } else if (mode === 'exif') {
+    statusEl.textContent = 'Lendo EXIF da timeline...'
+    const withDate = await Promise.all(frames.map(async f=>{
+      try{
+        const { default: exifr } = await import('exifr')
+        const d:any = await exifr.parse(f.blob, ['DateTimeOriginal','CreateDate'])
+        const t = d?.DateTimeOriginal instanceof Date ? d.DateTimeOriginal.getTime() : (d?.CreateDate instanceof Date ? d.CreateDate.getTime() : null)
+        return { f, t: t ?? 0 }
+      } catch { return { f, t: 0 } }
+    }))
+    // se nenhum tem EXIF, fallback para nome
+    const hasExif = withDate.some(x=>x.t!==0)
+    if (!hasExif) {
+      frames.sort((a,b)=> naturalSort(a.name,b.name))
+      log('Sem EXIF nos frames, ordenado por nome.')
+    } else {
+      withDate.sort((a,b)=>a.t-b.t)
+      frames = withDate.map(x=>x.f)
+    }
+  }
+  updateStats()
+  log(`Timeline ordenada por ${mode}`)
+})
 btnExportZip.addEventListener('click', async () => {
   if (frames.length === 0) return
   btnExportZip.textContent = 'Gerando ZIP...'
@@ -828,7 +902,7 @@ function stopPreview() {
 function startPreview() {
   if (frames.length === 0) return
   const fps = parseInt(fpsSel.value)
-  const [tw, th] = resSel.value.split('x').map(Number)
+  const [tw, th] = getVideoSize()
   previewCard.style.display = 'block'
   previewWrap.style.display = 'block'
   previewCanvas.style.display = 'block'
@@ -889,6 +963,10 @@ btnClear.addEventListener('click', () => {
   log('Timeline limpa.')
 })
 
+function getVideoSize(): [number, number] {
+  if (resSel.value === 'original') return photoResSel.value.split('x').map(Number) as [number, number]
+  return resSel.value.split('x').map(Number) as [number, number]
+}
 fpsSel.addEventListener('change', () => {
   updateStats()
   if (isPreviewPlaying) {
@@ -898,7 +976,7 @@ fpsSel.addEventListener('change', () => {
 })
 function applyOrientation() {
   const [pw, ph] = photoResSel.value.split('x').map(Number)
-  const [vw, vh] = resSel.value.split('x').map(Number)
+  const [vw, vh] = getVideoSize()
   const cameraWrap = document.getElementById('cameraWrap') as HTMLDivElement
   const previewWrapEl = document.getElementById('previewWrap') as HTMLDivElement
   if (cameraWrap) cameraWrap.style.aspectRatio = `${pw} / ${ph}`
@@ -906,20 +984,22 @@ function applyOrientation() {
   document.querySelectorAll<HTMLDivElement>('.thumb').forEach(el => el.style.aspectRatio = `${pw} / ${ph}`)
   const tip1 = document.getElementById('cameraTip') as HTMLParagraphElement | null
   const tip2 = document.getElementById('importTip') as HTMLParagraphElement | null
-  if (tip1) tip1.textContent = `Foto: ${pw}×${ph} • Vídeo: ${vw}×${vh}`
-  if (tip2) tip2.textContent = `Import: fotos serão convertidas para ${pw}×${ph}, vídeo exportado em ${vw}×${vh}.`
+  const vLabel = resSel.value === 'original' ? `Original (${vw}×${vh})` : `${vw}×${vh}`
+  if (tip1) tip1.textContent = `Foto: ${pw}×${ph} • Vídeo: ${vLabel}`
+  if (tip2) tip2.textContent = `Import: fotos serão convertidas para ${pw}×${ph}, vídeo exportado em ${vLabel}.`
 }
 resSel.addEventListener('change', () => {
   applyOrientation()
   updateStats()
   log(`Resolução de vídeo alterada para ${resSel.value}.`)
+  if (isPreviewPlaying) { stopPreview(); startPreview() }
 })
 photoResSel.addEventListener('change', async () => {
   applyOrientation()
   updateStats()
   log(`Resolução de foto alterada para ${photoResSel.value}. Novas capturas usarão essa resolução.`)
+  if (isPreviewPlaying) { stopPreview(); startPreview() }
   if (stream) {
-    // reinicia câmera com nova resolução ideal
     await startCamera()
   }
 })
@@ -961,7 +1041,7 @@ btnGenerate.addEventListener('click', async () => {
 
     const ff = await ensureFFmpeg()
     const fps = fpsSel.value
-    const filename = (document.getElementById('filename') as HTMLInputElement).value || 'stopmotion.mp4'
+    const filenameAtGen = (document.getElementById('filename') as HTMLInputElement).value || 'stopmotion.mp4'
 
     // clean previous files in MEMFS
     // write frames as img001.jpg etc
@@ -975,13 +1055,13 @@ btnGenerate.addEventListener('click', async () => {
       }
     }
     statusEl.textContent = 'Codificando vídeo (libx264)...'
-    // -framerate defines input fps, -r defines output fps
+    const vfArgs: string[] = resSel.value === 'original' ? [] : ['-vf', `scale=${resSel.value.split('x').join(':')}:flags=lanczos`]
     await ff.exec([
       '-framerate', fps,
       '-i', 'img%03d.jpg',
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
-      '-vf', `scale=${resSel.value.split('x').join(':')}:flags=lanczos`,
+      ...vfArgs,
       '-r', fps,
       'out.mp4'
     ])
@@ -1001,9 +1081,11 @@ btnGenerate.addEventListener('click', async () => {
 
     btnDownload.style.display = 'block'
     btnDownload.onclick = () => {
+      const fname = (document.getElementById('filename') as HTMLInputElement).value || filenameAtGen
+      const finalName = fname.endsWith('.mp4') ? fname : fname + '.mp4'
       const a = document.createElement('a')
       a.href = videoUrl
-      a.download = filename.endsWith('.mp4') ? filename : filename + '.mp4'
+      a.download = finalName
       a.click()
     }
     progressBar.style.width = '100%'
