@@ -772,7 +772,8 @@ function naturalSort(a: string, b: string) {
 }
 async function getExifDate(file: File): Promise<number | null> {
   try {
-    const { default: exifr } = await import('exifr')
+    const mod: any = await import('exifr/dist/full.esm.js')
+    const exifr = mod.default || mod
     const data: any = await exifr.parse(file, ['DateTimeOriginal','CreateDate','ModifyDate','CreationDate'])
     const d = data?.DateTimeOriginal || data?.CreateDate || data?.ModifyDate || data?.CreationDate
     if (d instanceof Date && !isNaN(d.getTime())) return d.getTime()
@@ -849,7 +850,8 @@ btnSortTimeline.addEventListener('click', async () => {
     statusEl.textContent = 'Lendo EXIF da timeline...'
     const withDate = await Promise.all(frames.map(async f=>{
       try{
-        const { default: exifr } = await import('exifr')
+        const mod: any = await import('exifr/dist/full.esm.js')
+        const exifr = mod.default || mod
         const d:any = await exifr.parse(f.blob, ['DateTimeOriginal','CreateDate'])
         const t = d?.DateTimeOriginal instanceof Date ? d.DateTimeOriginal.getTime() : (d?.CreateDate instanceof Date ? d.CreateDate.getTime() : null)
         return { f, t: t ?? 0 }
