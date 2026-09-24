@@ -13,44 +13,236 @@ let ffmpegLoaded = false
 let previewInterval: number | null = null
 let isPreviewPlaying = false
 
+const translations: Record<string, Record<string,string>> = {
+  pt: {
+    camera: 'Câmera',
+    importTab: 'Importar',
+    quality: 'Qualidade (captura e import)',
+    photo: 'Foto',
+    photoHDVert: '720×1280 (HD Vertical)',
+    photoFHDVert: '1080×1920 (FHD Vertical)',
+    photo4KVert: '2160×3840 (4K Vertical)',
+    photoHDHoriz: '1280×720 (HD Horizontal)',
+    photoFHDHoriz: '1920×1080 (FHD Horizontal)',
+    photo4KHoriz: '3840×2160 (4K Horizontal)',
+    turnOnCamera: 'Ligar câmera',
+    switch: 'Trocar',
+    capture: 'Capturar',
+    grid: 'Grade',
+    tapPreview: 'Toque no preview para capturar sem tremer.',
+    dropTitle: 'Clique ou arraste suas fotos aqui',
+    dropSub1: 'JPG / PNG / HEIC (HEIC será convertido).',
+    dropSub2: 'Ordenado automaticamente.',
+    sortBy: 'Ordenar por',
+    sortName: 'Nome (natural)',
+    sortDateFile: 'Data do arquivo',
+    sortExif: 'Data EXIF (criação original)',
+    sortBtn: 'Ordenar',
+    timeline: 'Timeline',
+    frames: 'frames',
+    hide: 'Ocultar',
+    show: 'Mostrar',
+    clear: 'Limpar',
+    projects: 'Projetos',
+    new: 'Novo',
+    preview: 'Preview',
+    play: 'Play',
+    pause: 'Pause',
+    fullscreen: 'Tela cheia',
+    fps: 'FPS',
+    videoOut: 'Vídeo (saída)',
+    originalKeep: 'Original (mantém foto)',
+    hdVert: '720×1280 (HD Vertical)',
+    fhdVert: '1080×1920 (FHD Vertical)',
+    k4Vert: '2160×3840 (4K Vertical)',
+    hdHoriz: '1280×720 (HD Horizontal)',
+    fhdHoriz: '1920×1080 (FHD Horizontal)',
+    k4Horiz: '3840×2160 (4K Horizontal)',
+    fileName: 'Nome do arquivo',
+    generate: 'Gerar vídeo local (.mp4)',
+    downloadVideo: 'Baixar vídeo',
+    downloadZip: 'Baixar ZIP dos frames',
+    noPhotos: 'Nenhuma foto ainda. Capture ou importe.',
+    camOff: 'Câmera desligada',
+    camNeedHttps: 'Toque em "Ligar câmera" (precisa HTTPS ou localhost)',
+    limit3: 'Limite 3 projetos. Apague um para criar outro. Salvo local no navegador.',
+    qualityOriginal: 'Original (sem recompressão)',
+    qualityMax: '0.95 (máxima)',
+    qualityHigh: '0.90 (alta)',
+    qualityStd: '0.85 (padrão)',
+    exportVideo: 'Exportar vídeo',
+    previewHere: 'Preview aqui',
+    addAtLeast2: 'Adicione pelo menos 2 fotos',
+    framesReady: '{n} frames prontos • FPS {fps} = ~{sec}s de vídeo',
+    active: 'Ativo',
+    open: 'Abrir',
+    noProjects: 'Nenhum projeto',
+    duplicate: 'Duplicar',
+    remove: 'Remover',
+    rename: 'Renomear',
+    delete: 'Apagar',
+    load: 'Carregar',
+    dragToReorder: 'Arrastar para reordenar',
+    reorderTimeline: 'Reordenar timeline já importada',
+    logProjectRestored: 'Projeto "{name}" restaurado: {n} fotos',
+    logUndone: 'Desfeito (Ctrl+Z)',
+    logImported: 'Importadas {new}/{total} arquivos em ordem. Total: {totalFrames}',
+    logTimelineSorted: 'Timeline ordenada por {mode}',
+    logVideoGenerated: 'Vídeo gerado: {size} bytes',
+    logZipGenerated: 'ZIP gerado: {size} MB',
+    logExposureLocked: 'Foco e balanço travados',
+    logExposureAuto: 'Foco/balanço auto',
+    logNotSupported: 'Trava não suportada: {msg}',
+    logHeicConverted: 'HEIC convertido: {name}',
+    logHeicFailed: 'Falha HEIC {name}: {msg} - tentando direto',
+    logReadingExif: 'Lendo EXIF de {n} imagens...',
+    logNoExif: 'Sem EXIF nos frames, ordenado por nome.',
+    logProcessing: 'Processando {n} imagens...',
+    logProcessingProgress: 'Processando {i}/{total}...',
+    logPreparing: 'Preparando {cur}/{total}...',
+    logEncoding: 'Codificando vídeo (libx264)...',
+    logDownloadingFfmpeg: 'Baixando ffmpeg.wasm (~30MB, só na primeira vez)...',
+    logCameraError: 'Camera error: {msg}',
+    logCleaned: 'Timeline limpa.',
+    openSource: 'Projeto open source no GitHub',
+  },
+  en: {
+    camera: 'Camera',
+    importTab: 'Import',
+    quality: 'Quality (capture & import)',
+    photo: 'Photo',
+    photoHDVert: '720×1280 (HD Vertical)',
+    photoFHDVert: '1080×1920 (FHD Vertical)',
+    photo4KVert: '2160×3840 (4K Vertical)',
+    photoHDHoriz: '1280×720 (HD Horizontal)',
+    photoFHDHoriz: '1920×1080 (FHD Horizontal)',
+    photo4KHoriz: '3840×2160 (4K Horizontal)',
+    turnOnCamera: 'Turn on camera',
+    switch: 'Switch',
+    capture: 'Capture',
+    grid: 'Grid',
+    tapPreview: 'Tap preview to capture without shaking.',
+    dropTitle: 'Click or drag your photos here',
+    dropSub1: 'JPG / PNG / HEIC (HEIC will be converted).',
+    dropSub2: 'Sorted automatically.',
+    sortBy: 'Sort by',
+    sortName: 'Name (natural)',
+    sortDateFile: 'File date',
+    sortExif: 'EXIF date (original creation)',
+    sortBtn: 'Sort',
+    timeline: 'Timeline',
+    frames: 'frames',
+    hide: 'Hide',
+    show: 'Show',
+    clear: 'Clear',
+    projects: 'Projects',
+    new: 'New',
+    preview: 'Preview',
+    play: 'Play',
+    pause: 'Pause',
+    fullscreen: 'Fullscreen',
+    fps: 'FPS',
+    videoOut: 'Video (output)',
+    originalKeep: 'Original (keep photo)',
+    hdVert: '720×1280 (HD Vertical)',
+    fhdVert: '1080×1920 (FHD Vertical)',
+    k4Vert: '2160×3840 (4K Vertical)',
+    hdHoriz: '1280×720 (HD Horizontal)',
+    fhdHoriz: '1920×1080 (FHD Horizontal)',
+    k4Horiz: '3840×2160 (4K Horizontal)',
+    fileName: 'File name',
+    generate: 'Generate local video (.mp4)',
+    downloadVideo: 'Download video',
+    downloadZip: 'Download ZIP of frames',
+    noPhotos: 'No photos yet. Capture or import.',
+    camOff: 'Camera off',
+    camNeedHttps: 'Tap "Turn on camera" (needs HTTPS or localhost)',
+    limit3: 'Limit 3 projects. Delete one to create another. Saved locally in browser.',
+    qualityOriginal: 'Original (no recompression)',
+    qualityMax: '0.95 (max)',
+    qualityHigh: '0.90 (high)',
+    qualityStd: '0.85 (standard)',
+    exportVideo: 'Export video',
+    previewHere: 'Preview here',
+    addAtLeast2: 'Add at least 2 photos',
+    framesReady: '{n} frames ready • FPS {fps} = ~{sec}s video',
+    active: 'Active',
+    open: 'Open',
+    noProjects: 'No projects',
+    duplicate: 'Duplicate',
+    remove: 'Remove',
+    rename: 'Rename',
+    delete: 'Delete',
+    load: 'Load',
+    dragToReorder: 'Drag to reorder',
+    reorderTimeline: 'Reorder imported timeline',
+    logProjectRestored: 'Project "{name}" restored: {n} photos',
+    logUndone: 'Undone (Ctrl+Z)',
+    logImported: 'Imported {new}/{total} files in order. Total: {totalFrames}',
+    logTimelineSorted: 'Timeline sorted by {mode}',
+    logVideoGenerated: 'Video generated: {size} bytes',
+    logZipGenerated: 'ZIP generated: {size} MB',
+    logExposureLocked: 'Focus and white balance locked',
+    logExposureAuto: 'Focus/white balance auto',
+    logNotSupported: 'Lock not supported: {msg}',
+    logHeicConverted: 'HEIC converted: {name}',
+    logHeicFailed: 'HEIC failed {name}: {msg} - trying direct',
+    logReadingExif: 'Reading EXIF of {n} images...',
+    logNoExif: 'No EXIF in frames, sorted by name.',
+    logProcessing: 'Processing {n} images...',
+    logProcessingProgress: 'Processing {i}/{total}...',
+    logPreparing: 'Preparing {cur}/{total}...',
+    logEncoding: 'Encoding video (libx264)...',
+    logDownloadingFfmpeg: 'Downloading ffmpeg.wasm (~30MB, first time only)...',
+    logCameraError: 'Camera error: {msg}',
+    logCleaned: 'Timeline cleared.',
+    openSource: 'Open source on GitHub',
+  }
+}
+let lang = localStorage.getItem('lang') || (navigator.language.startsWith('pt') ? 'pt' : 'en')
+function t(k: string){ return (translations[lang] as any)[k] || k }
+
 const app = document.querySelector<HTMLDivElement>('#app')!
 
 app.innerHTML = `
 <header>
-  <h1 style="display:flex; align-items:center; gap:8px"><svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="20" rx="2.18"/><path d="M7 2v20"/><path d="M17 2v20"/><path d="M2 12h20"/><path d="M2 7h5"/><path d="M2 17h5"/><path d="M17 17h5"/><path d="M17 7h5"/></svg> Stopmotion <span style="font-weight:400; font-size:12px; color:var(--muted)">100% local</span></h1>
-  <span id="counterBadge">0 fotos</span>
+  <h1 style="display:flex; align-items:center; gap:8px"><svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="20" rx="2.18"/><path d="M7 2v20"/><path d="M17 2v20"/><path d="M2 12h20"/><path d="M2 7h5"/><path d="M2 17h5"/><path d="M17 17h5"/><path d="M17 7h5"/></svg> Stopmotion <span style="font-weight:400; font-size:12px; color:var(--muted)">${t('local')}</span></h1>
+  <div style="display:flex; gap:8px; align-items:center">
+    <button id="btnLang" class="btn btn-ghost" style="padding:6px 10px; font-size:12px">${lang.toUpperCase()}</button>
+    <span id="counterBadge">0 fotos</span>
+  </div>
 </header>
 <div class="container">
   <div>
     <div class="card" id="projectsCard">
       <div style="display:flex; justify-content:space-between; align-items:center">
-        <h3 style="font-size:14px">Projetos — <span id="projCount">0/3</span></h3>
-        <button id="btnNewProject" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>
+        <h3 style="font-size:14px">${t('projects')} — <span id="projCount">0/3</span></h3>
+        <button id="btnNewProject" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${t('new')}</button>
       </div>
       <div id="projectsList" style="margin-top:10px; display:flex; flex-direction:column; gap:6px; max-height:180px; overflow:auto"></div>
-      <p style="font-size:11px; color:var(--muted); margin-top:8px">Limite 3 projetos. Apague um para criar outro. Salvo local no navegador.</p>
+      <p style="font-size:11px; color:var(--muted); margin-top:8px">${t('limit3')}</p>
     </div>
 
     <div class="card" style="margin-top:16px">
       <div class="tabs">
-        <button class="tab active" data-tab="camera"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> Câmera</button>
-        <button class="tab" data-tab="import"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-3.5-3.5a2 2 0 0 0-2.8 0L3 21"/></svg> Importar</button>
+        <button class="tab active" data-tab="camera"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> ${t('camera')}</button>
+        <button class="tab" data-tab="import"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-3.5-3.5a2 2 0 0 0-2.8 0L3 21"/></svg> ${t('importTab')}</button>
       </div>
 
       <div class="field" style="margin:12px 0 16px 0">
-        <label>Qualidade (captura e import)</label>
+        <label>${t('quality')}</label>
         <select id="quality">
-          <option value="original">Original (sem recompressão)</option>
-          <option value="0.95">0.95 (máxima)</option>
-          <option value="0.90">0.90 (alta)</option>
-          <option value="0.85" selected>0.85 (padrão)</option>
+          <option value="original">${t('qualityOriginal')}</option>
+          <option value="0.95">${t('qualityMax')}</option>
+          <option value="0.90">${t('qualityHigh')}</option>
+          <option value="0.85" selected>${t('qualityStd')}</option>
         </select>
       </div>
 
       <div id="panel-camera">
         <div class="camera-wrap" id="cameraWrap">
           <video id="video" autoplay playsinline muted style="display:none"></video>
-          <div id="placeholder" class="camera-placeholder">Câmera desligada<br><small>Toque em "Ligar câmera" (precisa HTTPS ou localhost)</small></div>
+          <div id="placeholder" class="camera-placeholder">${t('camOff')}<br><small>${t('camNeedHttps')}</small></div>
           <canvas id="captureCanvas" style="display:none"></canvas>
           <div id="gridOverlay" style="position:absolute; inset:0; pointer-events:none; display:none; border:1px solid rgba(255,255,255,.15)">
             <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute; inset:0">
@@ -62,45 +254,45 @@ app.innerHTML = `
           </div>
         </div>
         <div class="field" style="margin-top:12px">
-          <label>Foto</label>
+          <label>${t('photo')}</label>
           <select id="photoRes">
-            <option value="720x1280">720×1280 (HD Vertical)</option>
-            <option value="1080x1920" selected>1080×1920 (FHD Vertical)</option>
-            <option value="2160x3840">2160×3840 (4K Vertical)</option>
-            <option value="1280x720">1280×720 (HD Horizontal)</option>
-            <option value="1920x1080">1920×1080 (FHD Horizontal)</option>
-            <option value="3840x2160">3840×2160 (4K Horizontal)</option>
+            <option value="720x1280">${t('photoHDVert')}</option>
+            <option value="1080x1920" selected>${t('photoFHDVert')}</option>
+            <option value="2160x3840">${t('photo4KVert')}</option>
+            <option value="1280x720">${t('photoHDHoriz')}</option>
+            <option value="1920x1080">${t('photoFHDHoriz')}</option>
+            <option value="3840x2160">${t('photo4KHoriz')}</option>
           </select>
         </div>
         <div class="camera-controls">
-          <button id="btnStartCam" class="btn btn-ghost"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> Ligar câmera</button>
-          <button id="btnSwitch" class="btn btn-ghost" style="display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg> Trocar</button>
-          <button id="btnCapture" class="btn btn-primary" disabled><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="8"/></svg> Capturar</button>
+          <button id="btnStartCam" class="btn btn-ghost"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> ${t('turnOnCamera')}</button>
+          <button id="btnSwitch" class="btn btn-ghost" style="display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg> ${t('switch')}</button>
+          <button id="btnCapture" class="btn btn-primary" disabled><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="8"/></svg> ${t('capture')}</button>
         </div>
         <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
-          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer"><input type="checkbox" id="chkGrid" /> Grade</label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer"><input type="checkbox" id="chkGrid" /> ${t('grid')}</label>
         </div>
-        <p style="font-size:11px; color:var(--muted); margin-top:6px">Toque no preview para capturar sem tremer.</p>
-        <p id="cameraTip" style="font-size:12px; color:var(--muted); margin-top:8px">Dica: gire o celular na vertical. Fotos já saem em 1080×1920 (FHD vertical).</p>
+        <p style="font-size:11px; color:var(--muted); margin-top:6px">${t('tapPreview')}</p>
+        <p id="cameraTip" style="font-size:12px; color:var(--muted); margin-top:8px"></p>
       </div>
 
       <div id="panel-import" style="display:none">
         <label class="dropzone" id="dropzone" for="fileInput">
-          <div style="line-height:1.4"><strong>Clique ou arraste 500 fotos aqui</strong></div>
-          <div style="line-height:1.4; margin-top:6px; font-size:13px">JPG / PNG / HEIC (HEIC será convertido).</div>
-          <div style="line-height:1.4; font-size:12px; opacity:.8">Ordenado automaticamente.</div>
+          <div style="line-height:1.4"><strong>${t('dropTitle')}</strong></div>
+          <div style="line-height:1.4; margin-top:6px; font-size:13px">${t('dropSub1')}</div>
+          <div style="line-height:1.4; font-size:12px; opacity:.8">${t('dropSub2')}</div>
         </label>
         <input id="fileInput" type="file" accept="image/*,.heic,.heif" multiple style="display:none" />
         <div style="display:flex; gap:8px; margin-top:10px; align-items:end">
           <div class="field" style="flex:1; margin:0">
-            <label>Ordenar por</label>
+            <label>${t('sortBy')}</label>
             <select id="sortMode">
-              <option value="name" selected>Nome (natural)</option>
-              <option value="dateFile">Data do arquivo</option>
-              <option value="exif">Data EXIF (criação original)</option>
+              <option value="name" selected>${t('sortName')}</option>
+              <option value="dateFile">${t('sortDateFile')}</option>
+              <option value="exif">${t('sortExif')}</option>
             </select>
           </div>
-          <button id="btnSortTimeline" class="btn btn-ghost" style="padding:8px 10px; font-size:12px" title="Reordenar timeline já importada"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><polyline points="3 12 5 12 21 12"/><polyline points="3 18 5 18 21 18"/></svg> Ordenar</button>
+          <button id="btnSortTimeline" class="btn btn-ghost" style="padding:8px 10px; font-size:12px" title="${t('reorderTimeline')}"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><polyline points="3 12 5 12 21 12"/><polyline points="3 18 5 18 21 18"/></svg> ${t('sortBtn')}</button>
         </div>
         <p id="importTip" style="font-size:11px; color:var(--muted); margin-top:8px; line-height:1.4">Imagens serão redimensionadas para 1080×1920 (vertical) localmente antes de gerar o vídeo.</p>
       </div>
@@ -108,15 +300,15 @@ app.innerHTML = `
 
     <div class="card" style="margin-top:16px">
       <div style="display:flex; justify-content:space-between; align-items:center">
-        <h3 style="font-size:14px">Timeline — <span id="countText">0</span> frames</h3>
+        <h3 style="font-size:14px">${t('timeline')} — <span id="countText">0</span> ${t('frames')}</h3>
         <div style="display:flex; gap:6px">
-          <button id="btnToggleTimeline" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg> Ocultar</button>
-          <button id="btnClear" class="btn btn-danger" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpar</button>
+          <button id="btnToggleTimeline" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg> ${t('hide')}</button>
+          <button id="btnClear" class="btn btn-danger" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> ${t('clear')}</button>
         </div>
       </div>
       <div id="timelineCollapsible">
         <div id="timeline" class="timeline" style="margin-top:12px">
-          <div style="grid-column:1/-1; text-align:center; color:var(--muted); padding:20px; font-size:13px">Nenhuma foto ainda. Capture ou importe.</div>
+          <div style="grid-column:1/-1; text-align:center; color:var(--muted); padding:20px; font-size:13px">${t('noPhotos')}</div>
         </div>
         <div class="stats">
           <span class="badge" id="statRes">Saída: 1920×1080</span>
@@ -129,20 +321,20 @@ app.innerHTML = `
   <div>
     <div class="card" id="previewCard" style="display:none">
       <div style="display:flex; justify-content:space-between; align-items:center">
-        <h3 style="font-size:14px">Preview</h3>
+        <h3 style="font-size:14px">${t('preview')}</h3>
         <div style="display:flex; gap:6px">
-          <button id="btnPlayPause" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play</button>
-          <button id="btnFullscreen" class="btn btn-ghost" style="padding:6px 10px; font-size:12px" title="Tela cheia"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+          <button id="btnPlayPause" class="btn btn-ghost" style="padding:6px 10px; font-size:12px"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> ${t('play')}</button>
+          <button id="btnFullscreen" class="btn btn-ghost" style="padding:6px 10px; font-size:12px" title="${t('fullscreen')}"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
         </div>
       </div>
       <div class="preview-wrap" id="previewWrap" style="margin-top:10px">
         <video id="outputVideo" controls playsinline style="display:none"></video>
         <canvas id="previewCanvas" style="display:none"></canvas>
-        <div id="previewPlaceholder" style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-size:13px; position:absolute; inset:0">Preview aqui</div>
+        <div id="previewPlaceholder" style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-size:13px; position:absolute; inset:0">${t('previewHere')}</div>
       </div>
       <div class="controls-grid" style="grid-template-columns: 1fr 1fr; margin-top:12px">
         <div class="field">
-          <label>FPS</label>
+          <label>${t('fps')}</label>
           <select id="fps">
             <option value="1">1 fps</option>
             <option value="4">4 fps</option>
@@ -157,9 +349,9 @@ app.innerHTML = `
           </select>
         </div>
         <div class="field">
-          <label>Vídeo (saída)</label>
+          <label>${t('videoOut')}</label>
           <select id="resolution">
-            <option value="original">Original (mantém foto)</option>
+            <option value="original">${t('originalKeep')}</option>
             <option value="720x1280">720×1280 (HD Vertical)</option>
             <option value="1080x1920" selected>1080×1920 (FHD Vertical)</option>
             <option value="2160x3840">2160×3840 (4K Vertical)</option>
@@ -172,22 +364,28 @@ app.innerHTML = `
     </div>
 
     <div class="card" style="margin-top:16px">
-      <h3 style="font-size:14px">Exportar vídeo</h3>
+      <h3 style="font-size:14px">${t('exportVideo')}</h3>
       <div class="field" style="margin-top:8px">
-        <label>Nome do arquivo</label>
+        <label>${t('fileName')}</label>
         <input id="filename" value="stopmotion.mp4" />
       </div>
 
-      <button id="btnGenerate" class="btn btn-success" style="width:100%; margin-top:14px; padding:14px; font-size:16px" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg> Gerar vídeo local (.mp4)</button>
-      <button id="btnExportZip" class="btn btn-ghost" style="width:100%; margin-top:8px; display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><path d="M16 8l-8 0"/><path d="M16 12l-8 0"/></svg> Baixar ZIP dos frames</button>
+      <button id="btnGenerate" class="btn btn-success" style="width:100%; margin-top:14px; padding:14px; font-size:16px" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg> ${t('generate')}</button>
+      <button id="btnExportZip" class="btn btn-ghost" style="width:100%; margin-top:8px; display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><path d="M16 8l-8 0"/><path d="M16 12l-8 0"/></svg> ${t('downloadZip')}</button>
       <div class="progress" id="progressWrap" style="display:none"><i id="progressBar"></i></div>
-      <div id="status" style="font-size:12px; color:var(--muted); margin-top:8px; text-align:center">Adicione pelo menos 2 fotos</div>
-      <button id="btnDownload" class="btn btn-primary" style="width:100%; margin-top:10px; display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Baixar vídeo</button>
+      <div id="status" style="font-size:12px; color:var(--muted); margin-top:8px; text-align:center">${t('addAtLeast2')}</div>
+      <button id="btnDownload" class="btn btn-primary" style="width:100%; margin-top:10px; display:none"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${t('downloadVideo')}</button>
 
       <div id="log" class="log" style="display:none"></div>
     </div>
   </div>
 </div>
+<footer style="text-align:center; padding:20px; border-top:1px solid var(--border); margin-top:20px; color:var(--muted)">
+  <a href="https://github.com/yellowpink62/stopmotion" target="_blank" rel="noopener" style="color:var(--muted); text-decoration:none; display:inline-flex; align-items:center; gap:8px; font-size:13px">
+    <svg class="icon" viewBox="0 0 24 24" fill="currentColor" style="width:18px; height:18px"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577v-2.165c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.73.083-.73 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+    ${t('openSource')}
+  </a>
+</footer>
 `
 
 // --- helpers ---
@@ -237,6 +435,11 @@ tabs.forEach(t => t.addEventListener('click', () => {
   document.getElementById('panel-camera')!.style.display = tab === 'camera' ? 'block' : 'none'
   document.getElementById('panel-import')!.style.display = tab === 'import' ? 'block' : 'none'
 }))
+document.getElementById('btnLang')?.addEventListener('click', () => {
+  const newLang = lang === 'pt' ? 'en' : 'pt'
+  localStorage.setItem('lang', newLang)
+  location.reload()
+})
 chkGrid.addEventListener('change', () => { gridOverlay.style.display = chkGrid.checked ? 'block' : 'none' })
 btnFullscreen.addEventListener('click', async () => {
   const el = previewWrap as any
@@ -259,8 +462,8 @@ btnToggleTimeline.addEventListener('click', () => {
   timelineCollapsed = !timelineCollapsed
   timelineCollapsible.style.display = timelineCollapsed ? 'none' : 'block'
   btnToggleTimeline.innerHTML = timelineCollapsed
-    ? `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg> Mostrar`
-    : `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg> Ocultar`
+    ? `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg> ${t('show')}`
+    : `<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg> ${t('hide')}`
 })
 
 function log(msg: string) {
@@ -281,7 +484,7 @@ function undo() {
   frames.forEach(f => URL.revokeObjectURL(f.url))
   frames = prev.map(p => ({ ...p, url: URL.createObjectURL(p.blob) }))
   updateStats()
-  log('Desfeito (Ctrl+Z)')
+  log(t('logUndone'))
 }
 type Project = { id: string; name: string; createdAt: number; updatedAt: number; order?: number; frames: { id: string; blob: Blob; name: string }[]; photoRes: string; videoRes: string; fps: string }
 // --- IndexedDB persistência (múltiplos projetos, limite 3) ---
@@ -375,7 +578,7 @@ async function loadDB() {
     fpsSel.value=current.fps || fpsSel.value
     applyOrientation()
     renderProjectsList()
-    if (frames.length) log(`Projeto "${current.name}" restaurado: ${frames.length} fotos`)
+    if (frames.length) log(t('logProjectRestored').replace('{name}', current.name).replace('{n}', String(frames.length)))
   } catch(e:any){ log('Erro loadDB: '+e.message) }
 }
 async function renderProjectsList() {
@@ -391,16 +594,16 @@ async function renderProjectsList() {
   if (!list) return
   list.innerHTML = projects.map(p=>`
     <div draggable="true" data-proj="${p.id}" style="display:flex; align-items:center; gap:8px; padding:8px; border-radius:8px; border:1px solid ${p.id===currentProjectId?'var(--accent)':'var(--border)'}; background:${p.id===currentProjectId?'#1e293b':'var(--card2)'}; cursor:grab">
-      <span style="color:var(--muted); cursor:grab; user-select:none" title="Arrastar para reordenar">⋮⋮</span>
+      <span style="color:var(--muted); cursor:grab; user-select:none" title="${t('dragToReorder')}">⋮⋮</span>
       <div style="flex:1; min-width:0">
         <div style="font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" id="projName-${p.id}">${p.name}</div>
-        <div style="font-size:11px; color:var(--muted)">${p.frames.length} fotos • ${p.videoRes} • ${p.fps}fps</div>
+        <div style="font-size:11px; color:var(--muted)">${p.frames.length} ${t('frames')} • ${p.videoRes} • ${p.fps}fps</div>
       </div>
-      <button data-load="${p.id}" class="btn btn-ghost" style="padding:6px 8px; font-size:11px" title="Carregar">${p.id===currentProjectId?'Ativo':'Abrir'}</button>
-      <button data-rename="${p.id}" class="btn btn-ghost" style="padding:6px 6px; font-size:11px" title="Renomear"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      <button data-delproj="${p.id}" class="btn btn-danger" style="padding:6px 6px; font-size:11px" title="Apagar"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button data-load="${p.id}" class="btn btn-ghost" style="padding:6px 8px; font-size:11px" title="${t('load')}">${p.id===currentProjectId?t('active'):t('open')}</button>
+      <button data-rename="${p.id}" class="btn btn-ghost" style="padding:6px 6px; font-size:11px" title="${t('rename')}"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button data-delproj="${p.id}" class="btn btn-danger" style="padding:6px 6px; font-size:11px" title="${t('delete')}"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
     </div>
-  `).join('') || `<div style="text-align:center; color:var(--muted); font-size:12px; padding:10px">Nenhum projeto</div>`
+  `).join('') || `<div style="text-align:center; color:var(--muted); font-size:12px; padding:10px">${t('noProjects')}</div>`
   list.querySelectorAll('[data-load]').forEach(b=>b.addEventListener('click', async ()=>{
     const id=(b as HTMLElement).dataset.load!
     if(id===currentProjectId) return
@@ -494,11 +697,13 @@ window.addEventListener('keydown', (e) => {
 
 function updateStats() {
   const n = frames.length
-  counterBadge.textContent = `${n} foto${n !== 1 ? 's' : ''}`
+  const photoLabel = lang === 'en' ? 'Photo' : 'Foto'
+  const videoLabel = lang === 'en' ? 'Video' : 'Vídeo'
+  counterBadge.textContent = `${n} ${t('frames')}`
   countText.textContent = String(n)
   const res = resSel.value
   const pres = photoResSel.value
-  document.getElementById('statRes')!.textContent = `Foto: ${pres} • Vídeo: ${res}`
+  document.getElementById('statRes')!.textContent = `${photoLabel}: ${pres} • ${videoLabel}: ${res}`
   if (n >= 2 && previewCard.style.display === 'none') {
     previewCard.style.display = 'block'
     previewWrap.style.display = 'block'
@@ -516,21 +721,25 @@ function updateStats() {
   btnGenerate.disabled = n < 2
   btnCapture.disabled = !stream
   ;(btnExportZip as any).style.display = n >= 1 ? 'flex' : 'none'
-  statusEl.textContent = n < 2 ? 'Adicione pelo menos 2 fotos' : `${n} frames prontos • FPS ${fpsSel.value} = ~${(n / parseInt(fpsSel.value)).toFixed(1)}s de vídeo`
+  if (n < 2) statusEl.textContent = t('addAtLeast2')
+  else {
+    const sec = (n / parseInt(fpsSel.value)).toFixed(1)
+    statusEl.textContent = t('framesReady').replace('{n}', String(n)).replace('{fps}', fpsSel.value).replace('{sec}', sec)
+  }
   renderTimeline()
 }
 
 function renderTimeline() {
   if (frames.length === 0) {
-    timeline.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:var(--muted); padding:20px; font-size:13px">Nenhuma foto ainda. Capture ou importe.</div>`
+    timeline.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:var(--muted); padding:20px; font-size:13px">${t('noPhotos')}</div>`
     return
   }
   timeline.innerHTML = frames.map((f, i) => `
     <div class="thumb" draggable="true" data-idx="${i}" style="cursor:grab">
       <img src="${f.url}" loading="lazy" draggable="false" />
       <span>${String(i + 1).padStart(3, '0')}</span>
-      <button data-dup="${f.id}" title="Duplicar" style="right:28px; background:rgba(59,130,246,.8)"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v3"/></svg></button>
-      <button data-del="${f.id}" title="Remover"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button data-dup="${f.id}" title="${t('duplicate')}" style="right:28px; background:rgba(59,130,246,.8)"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v3"/></svg></button>
+      <button data-del="${f.id}" title="${t('remove')}"><svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
   `).join('')
   let dragIdx: number | null = null
@@ -820,10 +1029,9 @@ async function handleFiles(files: FileList | File[]) {
       statusEl.textContent = `Processando ${i + 1}/${arr.length}...`
     }
   }
-  // append em ordem garantida
   frames.push(...newFrames)
   updateStats()
-  log(`Importadas ${newFrames.length}/${arr.length} arquivos em ordem. Total: ${frames.length}`)
+  log(t('logImported').replace('{new}', String(newFrames.length)).replace('{total}', String(arr.length)).replace('{totalFrames}', String(frames.length)))
   // se ainda fora de ordem, usuário pode arrastar na timeline ou usar botão ordenar
 }
 fileInput.addEventListener('change', () => {
@@ -870,7 +1078,7 @@ btnSortTimeline.addEventListener('click', async () => {
     }
   }
   updateStats()
-  log(`Timeline ordenada por ${mode}`)
+  log(t('logTimelineSorted').replace('{mode}', mode))
 })
 btnExportZip.addEventListener('click', async () => {
   if (frames.length === 0) return
