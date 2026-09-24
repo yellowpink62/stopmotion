@@ -339,13 +339,19 @@ app.innerHTML = `
             <option value="1">1 fps</option>
             <option value="4">4 fps</option>
             <option value="8">8 fps</option>
+            <option value="10">10 fps</option>
             <option value="12">12 fps</option>
             <option value="15">15 fps</option>
+            <option value="20">20 fps</option>
             <option value="24" selected>24 fps</option>
             <option value="30">30 fps</option>
             <option value="40">40 fps</option>
             <option value="50">50 fps</option>
             <option value="60">60 fps</option>
+            <option value="70">70 fps</option>
+            <option value="80">80 fps</option>
+            <option value="90">90 fps</option>
+            <option value="100">100 fps</option>
           </select>
         </div>
         <div class="field">

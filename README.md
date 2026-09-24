@@ -1,21 +1,22 @@
 # Stopmotion — Local
 
-App web 100% local para criar stopmotion (até ~500 fotos). Gera vídeo `.mp4` no navegador via `ffmpeg.wasm`, sem servidor.
+100% local web app to create stopmotion. Generates `.mp4` video in the browser via `ffmpeg.wasm`, no server.
 
-**Acesse:** https://yellowpink62.github.io/stopmotion/
+**Live:** https://yellowpink62.github.io/stopmotion/
 
-## Funcionalidades
-- Captura in-app (FHD Vertical 1080×1920 / Horizontal 1920×1080) + import de 500 fotos
-- Timeline com colapso e preview em FPS (1, 4, 8, 12, 15, 24, 30)
-- Geração local com `ffmpeg.wasm` (libx264, yuv420p) — `FHD/HD vertical/horizontal`
-- PWA instalável (standalone) e 100% offline após primeiro acesso
+## Features
+- In-app capture (FHD Vertical 1080×1920 / Horizontal 1920×1080) + import
+- Timeline with collapse and FPS preview (1, 4, 8, 12, 15, 24, 30, 40, 50, 60)
+- Local generation with `ffmpeg.wasm` (libx264, yuv420p) — `FHD/HD vertical/horizontal, 4K, Original`
+- Installable PWA (standalone) and 100% offline after first load
+- Projects (up to 3) saved locally in browser, drag to reorder, duplicate, undo
 
-## Rodar local
+## Run locally
 ```bash
 npm install
-npm run dev        # https://localhost:5173 (câmera)
-npm run dev:http   # http://localhost:5173 (só import)
+npm run dev        # https://localhost:5173 (camera)
+npm run dev:http   # http://localhost:5173 (import only)
 npm run build && npx serve dist -l 5173
 ```
 
-Câmera exige `https` (smartphones). Import funciona em `http`.
+Camera requires `https` (smartphones). Import works on `http`.
