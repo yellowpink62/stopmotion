@@ -105,6 +105,9 @@ const translations: Record<string, Record<string,string>> = {
     logCameraError: 'Camera error: {msg}',
     logCleaned: 'Timeline limpa.',
     openSource: 'Projeto open source no GitHub',
+    videoReady: 'Vídeo pronto!',
+    videoReadyBody: '{size} • {n} frames @ {fps}fps',
+    notifyDenied: 'Permita notificações para ser avisado quando o vídeo terminar.',
   },
   en: {
     camera: 'Camera',
@@ -197,6 +200,9 @@ const translations: Record<string, Record<string,string>> = {
     logCameraError: 'Camera error: {msg}',
     logCleaned: 'Timeline cleared.',
     openSource: 'Open source on GitHub',
+    videoReady: 'Video ready!',
+    videoReadyBody: '{size} • {n} frames @ {fps}fps',
+    notifyDenied: 'Allow notifications to be alerted when the video finishes.',
   }
 }
 let lang = localStorage.getItem('lang') || (navigator.language.startsWith('pt') ? 'pt' : 'en')
@@ -476,6 +482,41 @@ function log(msg: string) {
   logEl.style.display = 'block'
   logEl.textContent += msg + '\n'
   logEl.scrollTop = logEl.scrollHeight
+}
+
+let toastTimer: number | undefined
+function toast(msg: string, sub?: string) {
+  let el = document.getElementById('toast')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'toast'
+    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120%);z-index:9999;max-width:calc(100vw - 32px);padding:14px 18px;border-radius:12px;background:#16a34a;color:#fff;font-size:14px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.35);display:flex;align-items:center;gap:10px;transition:transform .3s ease,opacity .3s ease;opacity:0;pointer-events:none'
+    el.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:20px;height:20px;flex:0 0 auto"><path d="M20 6L9 17l-5-5"/></svg><span id="toastMsg"></span>'
+    document.body.appendChild(el)
+  }
+  const msgEl = el.querySelector('#toastMsg') as HTMLElement
+  msgEl.textContent = msg + (sub ? ' — ' + sub : '')
+  el.style.opacity = '1'
+  el.style.transform = 'translateX(-50%) translateY(0)'
+  clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => {
+    el!.style.opacity = '0'
+    el!.style.transform = 'translateX(-50%) translateY(120%)'
+  }, 6000)
+}
+
+function notifyReady(title: string, body: string) {
+  toast(title, body)
+  try {
+    if (!('Notification' in window)) return
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body, icon: 'pwa-192x192.png', badge: 'pwa-192x192.png', tag: 'stopmotion-done' })
+    } else if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    } else {
+      log(t('notifyDenied'))
+    }
+  } catch {}
 }
 
 let historyStack: { blob: Blob; name: string; id: string }[][] = []
@@ -1102,7 +1143,8 @@ btnExportZip.addEventListener('click', async () => {
   a.click()
   setTimeout(()=>URL.revokeObjectURL(url), 5000)
   btnExportZip.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><path d="M16 8l-8 0"/><path d="M16 12l-8 0"/></svg> Baixar ZIP dos frames`
-  log(`ZIP gerado: ${(blob.size/1024/1024).toFixed(1)} MB`)
+  log(t('logZipGenerated').replace('{size}', (blob.size/1024/1024).toFixed(1)))
+  notifyReady(t('videoReady'), t('videoReadyBody').replace('{size}', (blob.size/1024/1024).toFixed(1) + ' MB').replace('{n}', String(frames.length)).replace('{fps}', 'ZIP'))
 })
 
 // --- preview (canvas loop) ---
@@ -1255,6 +1297,9 @@ btnGenerate.addEventListener('click', async () => {
     progressWrap.style.display = 'block'
     progressBar.style.width = '5%'
     logEl.textContent = ''
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
     log(`Iniciando geração: ${frames.length} frames, ${fpsSel.value} fps, ${resSel.value}`)
 
     const ff = await ensureFFmpeg()
@@ -1307,8 +1352,13 @@ btnGenerate.addEventListener('click', async () => {
       a.click()
     }
     progressBar.style.width = '100%'
-    statusEl.textContent = `Pronto! ${(videoBlob.size / 1024 / 1024).toFixed(1)} MB • ${frames.length} frames @ ${fps}fps`
-    log(`Vídeo gerado: ${videoBlob.size} bytes`)
+    const sizeMB = (videoBlob.size / 1024 / 1024).toFixed(1)
+    statusEl.textContent = `Pronto! ${sizeMB} MB • ${frames.length} frames @ ${fps}fps`
+    log(t('logVideoGenerated').replace('{size}', String(videoBlob.size)))
+    notifyReady(
+      t('videoReady'),
+      t('videoReadyBody').replace('{size}', sizeMB + ' MB').replace('{n}', String(frames.length)).replace('{fps}', fps)
+    )
 
     // cleanup MEMFS images (keep out.mp4 for re-download)
     for (let i = 0; i < frames.length; i++) {
